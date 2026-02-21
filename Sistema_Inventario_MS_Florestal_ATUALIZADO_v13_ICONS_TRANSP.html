@@ -1,0 +1,3062 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sistema de Inventário MS Florestal</title>
+  <meta name="color-scheme" content="light dark" />
+
+  <style>
+/* ============ Design Tokens ============ */
+:root{
+  --bg: #0b1220; /* canvas */
+  --surface: rgba(255,255,255,.06);
+  --surface-2: rgba(255,255,255,.09);
+  --border: rgba(255,255,255,.14);
+  --text: rgba(255,255,255,.92);
+  --muted: rgba(255,255,255,.70);
+  --muted-2: rgba(255,255,255,.58);
+  --primary: #3b82f6;
+  --primary-2: #60a5fa;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #a78bfa;
+  --shadow: 0 10px 30px rgba(0,0,0,.35);
+  --radius: 16px;
+  --radius-sm: 12px;
+  --gap: 16px;
+  --gap-lg: 22px;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+/* Light mode fallback */
+@media (prefers-color-scheme: light){
+  :root{
+    --bg: #f6f7fb;
+    --surface: rgba(0,0,0,.045);
+    --surface-2: rgba(0,0,0,.06);
+    --border: rgba(0,0,0,.10);
+    --text: rgba(0,0,0,.88);
+    --muted: rgba(0,0,0,.62);
+    --muted-2: rgba(0,0,0,.52);
+    --shadow: 0 14px 40px rgba(16,24,40,.12);
+  }
+}
+/* ============ Base ============ */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:var(--font);
+  color:var(--text);
+  background:
+    radial-gradient(1200px 600px at 12% 8%, rgba(59,130,246,.35), transparent 60%),
+    radial-gradient(900px 520px at 92% 12%, rgba(167,139,250,.28), transparent 55%),
+    radial-gradient(700px 500px at 60% 92%, rgba(34,197,94,.20), transparent 60%),
+    var(--bg);
+  line-height:1.35;
+  letter-spacing:.2px;
+}
+a{color:inherit}
+.sr-only{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
+:where(button, a, input, select, textarea):focus-visible{
+  outline: 3px solid color-mix(in oklab, var(--primary) 70%, white 30%);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* ============ Layout ============ */
+.app{min-height:100%;display:flex;flex-direction:column;}
+.topbar{position:sticky;top:0;z-index:50;backdrop-filter: blur(14px);background: color-mix(in oklab, var(--bg) 70%, transparent 30%);border-bottom: 1px solid var(--border);}
+.topbar-inner{max-width: 1260px;margin: 0 auto;padding: 14px 18px;display:flex;align-items:center;gap: 10px;justify-content: space-between;}
+.brand{display:flex;align-items:center;gap: 12px;min-width: 220px;}
+.logo{width: 42px;height: 42px;border-radius: 14px;background: linear-gradient(135deg, var(--primary), var(--info));box-shadow: var(--shadow);display:grid;place-items:center;flex: 0 0 auto;}
+.logo svg{filter: drop-shadow(0 8px 18px rgba(0,0,0,.25));}
+.brand h1{font-size: 16px;margin: 0;font-weight: 760;}
+.brand p{margin: 2px 0 0;color: var(--muted);font-size: 12.5px;}
+.actions{display:flex;align-items:center;gap: 10px;flex-wrap: wrap;justify-content: flex-end;}
+.container{max-width: 1260px;width:100%;margin: 0 auto;padding: 18px;display:grid;gap: var(--gap-lg);}
+.grid{display:grid;grid-template-columns: 1.15fr .85fr;gap: var(--gap-lg);align-items:start;}
+@media (max-width: 1040px){
+  .grid{grid-template-columns: 1fr;}
+  .brand{min-width: unset;}
+}
+
+/* ============ Components ============ */
+.card{background: linear-gradient(180deg, var(--surface), color-mix(in oklab, var(--surface) 78%, transparent 22%));border: 1px solid var(--border);border-radius: var(--radius);box-shadow: var(--shadow);overflow:hidden;}
+.card-header{padding: 16px 18px;display:flex;align-items:flex-start;justify-content: space-between;gap: 12px;border-bottom: 1px solid var(--border);background: color-mix(in oklab, var(--surface-2) 85%, transparent 15%);}
+.card-header h2{margin:0;font-size: 14px;font-weight: 780;letter-spacing:.2px;}
+.card-header .hint{margin: 6px 0 0;color: var(--muted);font-size: 12.5px;}
+.card-body{padding: 16px 18px 18px;}
+.row{display:flex;gap: 10px;flex-wrap: wrap;align-items:center;}
+.btn{appearance:none;border: 1px solid var(--border);background: color-mix(in oklab, var(--surface-2) 90%, transparent 10%);color: var(--text);padding: 10px 12px;border-radius: 14px;font-weight: 700;font-size: 13px;display:inline-flex;align-items:center;gap: 8px;cursor:pointer;transition: transform .08s ease, background .18s ease, border-color .18s ease;user-select:none;}
+
+.nav-ico{width:18px;height:18px;object-fit:contain;flex:0 0 auto;background:transparent;mix-blend-mode:multiply;filter: drop-shadow(0 6px 12px rgba(0,0,0,.18));}
+.btn:hover{transform: translateY(-1px); border-color: color-mix(in oklab, var(--primary) 40%, var(--border));}
+.btn:active{transform: translateY(0px) scale(.99);}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none;}
+.btn-primary{background: linear-gradient(135deg, var(--primary), var(--primary-2));border-color: color-mix(in oklab, var(--primary) 65%, var(--border));color: white;}
+.btn-ghost{background: transparent;}
+.chip{display:inline-flex;align-items:center;gap: 6px;padding: 6px 10px;border-radius: 999px;border: 1px solid var(--border);background: color-mix(in oklab, var(--surface-2) 85%, transparent 15%);color: var(--muted);font-size: 12px;font-weight: 650;}
+.kpi-grid{display:grid;grid-template-columns: repeat(2, minmax(0, 1fr));gap: 12px;}
+.kpi{border-radius: var(--radius-sm);border: 1px solid var(--border);background: color-mix(in oklab, var(--surface-2) 90%, transparent 10%);padding: 12px;}
+.kpi .label{color: var(--muted); font-size: 12px; font-weight: 650;}
+.kpi .value{margin-top: 6px; font-size: 20px; font-weight: 820; letter-spacing:.2px;}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width: 72px;padding: 6px 10px;border-radius: 999px;font-size: 12px;font-weight: 800;border: 1px solid var(--border);background: color-mix(in oklab, var(--surface-2) 85%, transparent 15%);color: var(--muted);white-space:nowrap;}
+.badge.ok{background: color-mix(in oklab, var(--success) 16%, var(--surface-2)); color: color-mix(in oklab, var(--success) 70%, var(--text)); border-color: color-mix(in oklab, var(--success) 38%, var(--border));}
+.badge.falta{background: color-mix(in oklab, var(--warning) 16%, var(--surface-2)); color: color-mix(in oklab, var(--warning) 70%, var(--text)); border-color: color-mix(in oklab, var(--warning) 38%, var(--border));}
+.badge.sobra{background: color-mix(in oklab, var(--danger) 16%, var(--surface-2)); color: color-mix(in oklab, var(--danger) 72%, var(--text)); border-color: color-mix(in oklab, var(--danger) 38%, var(--border));}
+.badge.sem{background: color-mix(in oklab, var(--info) 16%, var(--surface-2)); color: color-mix(in oklab, var(--info) 75%, var(--text)); border-color: color-mix(in oklab, var(--info) 38%, var(--border));}
+
+/* Tag pequena para marcação (ex.: valor ajustado manualmente) */
+.tag{display:inline-flex;align-items:center;gap:6px;margin-left:8px;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800;border:1px solid var(--border);background: color-mix(in oklab, var(--surface-2) 85%, transparent 15%);color: var(--muted);white-space:nowrap;}
+.tag.manual{background: color-mix(in oklab, var(--info) 16%, var(--surface-2)); color: color-mix(in oklab, var(--info) 75%, var(--text)); border-color: color-mix(in oklab, var(--info) 38%, var(--border));}
+.tag.adjust{background: color-mix(in oklab, var(--primary) 14%, var(--surface-2)); color: color-mix(in oklab, var(--primary) 75%, var(--text)); border-color: color-mix(in oklab, var(--primary) 38%, var(--border));}
+
+/* Toast simples (avisos rápidos) */
+.toast{position:fixed;right:18px;bottom:18px;z-index:9999;max-width:min(420px, calc(100vw - 36px));padding:12px 14px;border-radius:12px;border:1px solid var(--border);background: color-mix(in oklab, var(--surface-2) 92%, transparent 8%);box-shadow: var(--shadow);color: var(--text);font-weight:700;font-size:13px;backdrop-filter: blur(10px);}
+.toast small{display:block;margin-top:4px;color: var(--muted);font-weight:650;}
+
+.field{display:flex;flex-direction:column;gap: 6px;min-width: 220px;}
+label{font-size: 12px; font-weight: 750; color: var(--muted);}
+input[type="text"], input[type="number"], input[type="date"], select{
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface-2) 90%, transparent 10%);
+  color: var(--text);
+  font-weight: 650;
+  font-size: 13px;
+}
+.hint-box{padding: 10px 12px;border-radius: 14px;border: 1px dashed color-mix(in oklab, var(--border) 80%, transparent 20%);background: color-mix(in oklab, var(--surface) 85%, transparent 15%);color: var(--muted);font-size: 12.5px;}
+.divider{height:1px;background: var(--border); margin: 14px 0;}
+
+/* Table */
+.table-wrap{overflow:auto;}
+/* Mostra ~10 linhas e habilita rolagem vertical */
+.table-wrap.limited{
+  /* Ajuste fino: 10 linhas + cabeçalho (thead sticky) */
+  --row-h: 46px;     /* altura média de uma linha */
+  --head-h: 46px;    /* altura média do cabeçalho */
+  max-height: calc((var(--row-h) * 10) + var(--head-h));
+  overflow: auto; /* vertical + horizontal quando precisar */
+}
+
+/* (Opcional) Barra de rolagem mais “bonita” */
+.table-wrap.limited{
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: color-mix(in oklab, var(--primary) 55%, transparent) transparent;
+}
+.table-wrap.limited::-webkit-scrollbar{ height: 10px; width: 10px; }
+.table-wrap.limited::-webkit-scrollbar-thumb{
+  background: color-mix(in oklab, var(--primary) 55%, transparent);
+  border-radius: 999px;
+}
+.table-wrap.limited::-webkit-scrollbar-track{ background: transparent; }
+
+/* (Opcional) Em telas menores, reduzir para ~7 linhas */
+@media (max-width: 640px){
+  .table-wrap.limited{
+    max-height: calc((var(--row-h) * 7) + var(--head-h));
+  }
+}
+
+table{width:100%; border-collapse:separate; border-spacing:0; min-width: 980px;}
+thead th{position: sticky;top: 0;z-index: 10;text-align:left;font-size: 12px;color: var(--muted);font-weight: 820;padding: 12px 12px;background: color-mix(in oklab, var(--surface-2) 92%, transparent 8%);border-bottom: 1px solid var(--border);backdrop-filter: blur(10px);}
+tbody td{padding: 12px 12px;border-bottom: 1px solid color-mix(in oklab, var(--border) 78%, transparent 22%);font-size: 13px;color: color-mix(in oklab, var(--text) 92%, var(--muted) 8%);vertical-align: middle;}
+tbody tr:hover td{background: color-mix(in oklab, var(--surface-2) 65%, transparent 35%);}
+.mono{font-family: var(--mono); font-size: 12.5px; color: var(--muted);}
+.num{text-align:right; font-variant-numeric: tabular-nums;}
+
+/* Stepper */
+.stepper{display:flex; gap: 10px; flex-wrap: wrap; align-items:center;}
+.step{display:flex; align-items:center; gap: 10px;padding: 8px 10px;border-radius: 999px;border: 1px solid var(--border);background: color-mix(in oklab, var(--surface-2) 82%, transparent 18%);color: var(--muted);font-size: 12px;font-weight: 760;}
+.dot{width:10px;height:10px;border-radius:99px;background: color-mix(in oklab, var(--muted) 45%, transparent 55%);}
+.step.active{color: var(--text); border-color: color-mix(in oklab, var(--primary) 35%, var(--border));}
+.step.active .dot{background: var(--primary); box-shadow: 0 0 0 6px color-mix(in oklab, var(--primary) 20%, transparent 80%);}
+
+/* Charts */
+.chart-grid{display:grid;grid-template-columns: 1fr;gap: 10px;}
+canvas{max-width:100%; max-height:260px;}
+
+/* Footer */
+footer{margin-top:auto;padding: 12px;color: var(--muted);text-align:center;font-size: 11px;}
+
+@media print{
+  .topbar, .actions, footer{display:none !important;}
+  body{background:white;color:black;}
+  .card{box-shadow:none;}
+  table{min-width: auto;}
+  thead th{position: static;}
+}
+  
+/* UX: esconder painéis de setup (MB52/R1/R2/Pendências) e focar no dashboard/tabela */
+.grid.setup-hidden{ grid-template-columns: 1fr !important; }
+.grid.setup-hidden #setupLeft{ display:none !important; }
+
+/* Modal wizard */
+.modal-backdrop{
+  position:fixed; inset:0;
+  background: rgba(0,0,0,.50);
+  backdrop-filter: blur(8px);
+  z-index: 9990;
+}
+.modal{
+  position:fixed; inset:0;
+  display:grid; place-items:center;
+  z-index: 9991;
+  padding: 18px;
+}
+.modal[hidden]{ display:none !important; }
+.modal-panel{
+  width: min(980px, calc(100vw - 36px));
+  max-height: calc(100vh - 36px);
+  overflow:auto;
+  border-radius: 18px;
+  border:1px solid var(--border);
+  background: color-mix(in oklab, var(--bg) 40%, black 60%);
+  box-shadow: var(--shadow);
+}
+@media (prefers-color-scheme: light){
+  .modal-panel{ background: white; }
+}
+.modal-head{
+  padding:16px 18px;
+  display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+  border-bottom:1px solid var(--border);
+  background: color-mix(in oklab, var(--surface-2) 92%, transparent 8%);
+}
+.modal-body{padding: 16px 18px 18px;}
+.wz-step{display:block;}
+.wz-top{
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+}
+.wz-progress{
+  display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+}
+.wz-pill{
+  display:flex; align-items:center; gap:10px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface-2) 82%, transparent 18%);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+.wz-pill.active{ color: var(--text); border-color: color-mix(in oklab, var(--primary) 35%, var(--border)); }
+.wz-pill.active .dot{ background: var(--primary); box-shadow: 0 0 0 6px color-mix(in oklab, var(--primary) 20%, transparent 80%); }
+body.modal-open header, body.modal-open main, body.modal-open footer{
+  pointer-events:none;
+  filter: saturate(.9);
+  opacity:.68;
+}
+body.modal-open .modal, body.modal-open .modal-backdrop{
+  pointer-events:auto;
+  filter:none;
+  opacity:1;
+}
+
+
+
+/* KPI Modal (detalhes) - garantir centralização e sobreposição */
+.modal-backdrop.kpi{
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+}
+.modal.kpi{
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 10010;
+}
+
+/* KPI cards: ação exportar + clique para detalhes */
+.kpi{position:relative; cursor:pointer;}
+.kpi:active{transform: translateY(0px) scale(.998);}
+.kpi:hover{border-color: color-mix(in oklab, var(--primary) 30%, var(--border));}
+.kpi-action{
+  position:absolute;
+  top:10px;
+  right:10px;
+  width:34px;
+  height:34px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background: color-mix(in oklab, var(--surface-2) 92%, transparent 8%);
+  color: var(--text);
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+  font-weight:900;
+}
+.kpi-action:hover{border-color: color-mix(in oklab, var(--primary) 45%, var(--border)); transform: translateY(-1px);}
+.kpi-action:active{transform: translateY(0px) scale(.99);}
+.kpi-action:focus-visible{outline: 3px solid color-mix(in oklab, var(--primary) 70%, white 30%); outline-offset: 2px;}
+
+.kpi[role="button"]{user-select:none;}
+.kpi-title-row{display:flex; align-items:center; gap:10px; justify-content:space-between;}
+
+/* Modal KPI sobre o wizard */
+.modal-backdrop.kpi{ z-index: 9994; }
+.modal.kpi{ z-index: 9995; }
+
+
+.signature{font-size:11px;color:var(--muted);}
+.signature strong{ color: var(--muted); font-weight: 760; }
+
+
+/* Sidebar layout */
+.app{flex-direction:row;}
+.topbar{position:sticky; top:0;}
+.sidebar{
+  position:sticky;
+  top:0;
+  align-self:flex-start;
+  height:100vh;
+  width: 220px;
+  padding: 10px 10px 12px;
+  border-right: 1px solid var(--border);
+  background: color-mix(in oklab, var(--bg) 70%, transparent 30%);
+  backdrop-filter: blur(14px);
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+  z-index:60;
+}
+.side-brand{display:flex; gap:10px; align-items:center; padding:8px 8px; border:1px solid var(--border); border-radius: 16px; background: color-mix(in oklab, var(--surface-2) 86%, transparent 14%);}
+.side-badge{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:#ffffff;border:1px solid rgba(0,0,0,.10);box-shadow: 0 10px 26px rgba(0,0,0,.12);}
+.side-title{font-weight:900; letter-spacing:.2px;}
+.side-sub{color:var(--muted); font-size:12px; font-weight:700;}
+.side-group{display:grid; gap:10px;}
+.side-btn{width:100%; justify-content:center; padding:9px 10px; font-size:12.5px;}
+.side-footer{margin-top:auto; padding:10px 6px; color:var(--muted); font-size:12px; text-align:center;}
+.side-logo{width:40px;height:40px;object-fit:contain;display:block;}
+/* Content area */
+.main-wrap{flex:1; min-width:0;}
+/* Make topbar span only content area */
+header.topbar{width:100%;}
+/* Responsive: sidebar collapses to top on small screens */
+@media (max-width: 920px){
+  .app{flex-direction:column;}
+  .sidebar{
+    position:static;
+    width:100%;
+    height:auto;
+    border-right:none;
+    border-bottom:1px solid var(--border);
+    flex-direction:row;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .side-group{grid-auto-flow:column; grid-template-columns:repeat(2, minmax(0, 1fr));}
+  .side-btn{width:auto;}
+  .side-footer{width:100%; margin-top:0;}
+}
+
+
+.btn-primary .nav-ico{mix-blend-mode:multiply;}
+</style>
+</head>
+
+<body>
+  <div class="app">
+
+    <nav class="sidebar" aria-label="Ações">
+      <div class="side-brand">
+        <div class="side-badge"><img src="https://leitugasaude.com.br/assets/img/convenios/msfloresta.png" alt="MS Florestal" class="side-logo" /></div>
+        <div class="side-text">
+          <div class="side-title">Inventário</div>
+          <div class="side-sub">MS Florestal</div>
+        </div>
+      </div>
+
+      <div class="side-group">
+        <button class="btn btn-primary side-btn" id="btnStartInventory" type="button"><img class="nav-ico" src="https://cdn-icons-gif.flaticon.com/6172/6172512.gif" alt="" aria-hidden="true" /><span>Iniciar inventário</span></button>
+        <button class="btn side-btn" id="btnStartCounting" type="button" disabled><img class="nav-ico" src="https://cdn-icons-gif.flaticon.com/6416/6416353.gif" alt="" aria-hidden="true" /><span>Iniciar contagem</span></button>
+      </div>
+
+      <div class="side-group">
+        <button class="btn btn-primary side-btn" id="btnExportFinal" type="button" disabled><img class="nav-ico" src="https://cdn-icons-gif.flaticon.com/6172/6172541.gif" alt="" aria-hidden="true" /><span>Exportar Final</span></button>
+        <button class="btn side-btn" id="btnExportR2Lista" type="button" disabled><img class="nav-ico" src="https://cdn-icons-gif.flaticon.com/6172/6172541.gif" alt="" aria-hidden="true" /><span>Exportar Lista R2</span></button>
+        <button class="btn side-btn" id="btnExportPDF" type="button" disabled><img class="nav-ico" src="https://cdn-icons-gif.flaticon.com/6172/6172533.gif" alt="" aria-hidden="true" /><span>Exportar Relatório PDF</span></button>
+      </div>
+
+      <div class="side-group">
+        <button class="btn btn-ghost side-btn" id="btnReset" type="button"><img class="nav-ico" src="https://cdn-icons-gif.flaticon.com/6416/6416353.gif" alt="" aria-hidden="true" /><span>Novo</span></button>
+      </div>
+
+      <div class="side-footer">
+        <span class="signature">Aplicativo realizado por <strong>Lucas Marques</strong></span>
+        <span class="signature" style="opacity:.65;font-size:10px;margin-top:6px;display:block;">Ícones animados: Flaticon</span>
+      </div>
+    </nav>
+<div class="main-wrap">
+<main class="container" role="main">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2>Fluxo do processo</h2>
+            <p class="hint">Importe MB52 → (opcional) aplique pendentes → R1 completa → R2 por desvios/alto valor → Conciliação final</p>
+          </div>
+          <div class="stepper" aria-label="Etapas">
+            <div class="step active" id="step1"><span class="dot"></span>1. MB52</div>
+            <div class="step" id="step2"><span class="dot"></span>2. Rodada 1</div>
+            <div class="step" id="step3"><span class="dot"></span>3. Rodada 2</div>
+            <div class="step" id="step4"><span class="dot"></span>4. Final</div>
+          </div>
+        </div>
+      </div>
+
+      <section class="grid setup-hidden" id="mainGrid" aria-label="Painel principal">
+        <div id="setupLeft" style="display:grid; gap: var(--gap-lg)">
+
+          <section class="card" aria-labelledby="mb52-title">
+            <div class="card-header">
+              <div>
+                <h2 id="mb52-title">1) Importar MB52 (SAP)</h2>
+                <p class="hint">Material • Centro • Depósito • UMB • Utilização livre • Val.utiliz.livre</p>
+              </div>
+              <span class="chip">📦 Fonte de dados</span>
+            </div>
+            <div class="card-body">
+              <div class="row" style="justify-content:space-between; align-items:flex-end;">
+                <div class="field" style="min-width:320px">
+                  <label for="fileBase">Arquivo MB52 (.xlsx/.csv)</label>
+                  <input id="fileNameBase" type="text" placeholder="Nenhum arquivo carregado" readonly />
+                  <div id="baseInfo" class="hint-box">Dica: mantenha as colunas com os nomes do SAP para evitar divergências.</div>
+                </div>
+                <div class="row">
+                  <button class="btn btn-primary" id="btnImportBase" type="button">📥 Importar</button>
+                  <button class="btn" id="btnClearBase" type="button">🧹 Limpar</button>
+                </div>
+              </div>
+              <input id="fileBase" type="file" accept=".xlsx,.xlsm,.csv" hidden />
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="pend-title">
+            <div class="card-header">
+              <div>
+                <h2 id="pend-title">1B) Ajustes Pendentes (Transferências e Baixas)</h2>
+                <p class="hint">Importe as planilhas pendentes para ajustar a Qtd SAP esperada no depósito informado.</p>
+              </div>
+              <span class="chip">🧮 Ajuste SAP</span>
+            </div>
+
+            <div class="card-body">
+              <div class="row" style="align-items:flex-end; justify-content: space-between;">
+                <div class="row">
+                  <div class="field" style="min-width:220px">
+                    <label for="depPend">Depósito (mesmo para as duas planilhas)</label>
+                    <input id="depPend" type="text" placeholder="Ex.: 0001" />
+                  </div>
+
+                  <div class="field" style="min-width:320px">
+                    <label>Transferências Pendentes</label>
+                    <input id="fileNameTrans" type="text" placeholder="Nenhum arquivo carregado" readonly />
+                  </div>
+
+                  <div class="field" style="min-width:320px">
+                    <label>Baixas Pendentes</label>
+                    <input id="fileNameBaixas" type="text" placeholder="Nenhum arquivo carregado" readonly />
+                  </div>
+                </div>
+
+                <div class="row">
+                  <button class="btn btn-primary" id="btnImportTrans" type="button" disabled>📥 Importar Transferências</button>
+                  <button class="btn btn-primary" id="btnImportBaixas" type="button" disabled>📥 Importar Baixas</button>
+                  <button class="btn" id="btnClearPend" type="button" disabled>🧹 Limpar Ajustes</button>
+                </div>
+              </div>
+
+              <input id="fileTrans" type="file" accept=".xlsx,.xlsm,.csv" hidden />
+              <input id="fileBaixas" type="file" accept=".xlsx,.xlsm,.csv" hidden />
+
+              <div class="divider"></div>
+              <div id="pendInfo" class="hint-box">
+                Status: <strong>Aguardando MB52</strong> — importe o MB52 e informe o depósito para habilitar os ajustes pendentes.
+              </div>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="r1-title">
+            <div class="card-header">
+              <div>
+                <h2 id="r1-title">2) Rodada 1 — Contagem Completa</h2>
+                <p class="hint">Gere a lista da R1, distribua para os contadores e importe o retorno.</p>
+              </div>
+              <span class="chip">🧾 R1</span>
+            </div>
+            <div class="card-body">
+              <div class="row" style="align-items:flex-end; justify-content: space-between;">
+                <div class="row">
+                  <div class="field">
+                    <label for="r1_nome">Contador R1</label>
+                    <input id="r1_nome" type="text" placeholder="Ex.: Equipe A" />
+                  </div>
+                  <div class="field">
+                    <label for="r1_data">Entrega R1</label>
+                    <input id="r1_data" type="text" placeholder="Ex.: 10/01 18:00" />
+                  </div>
+                </div>
+                <div class="row">
+                  <button class="btn btn-primary" id="btnGerarR1" type="button" disabled>🧾 Gerar R1</button>
+                  <button class="btn" id="lblR1" type="button" disabled>📥 Importar R1</button>
+                </div>
+              </div>
+              <input id="fileR1" type="file" accept=".xlsx,.xlsm,.csv" hidden />
+              <div class="divider"></div>
+              <div id="r1Info" class="hint-box">Status: <strong>Aguardando MB52</strong> — importe o MB52 para habilitar a geração da R1.</div>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="r2-title">
+            <div class="card-header">
+              <div>
+                <h2 id="r2-title">3) Rodada 2 — Desvios e/ou Alto Valor</h2>
+                <p class="hint">R2 pode ser por desvios e/ou alto valor (corte em R$).</p>
+              </div>
+              <span class="chip">🎯 R2</span>
+            </div>
+            <div class="card-body">
+              <div class="row" style="align-items:flex-end; justify-content: space-between;">
+                <div class="row">
+                  <div class="field">
+                    <label for="r2_nome">Contador R2</label>
+                    <input id="r2_nome" type="text" placeholder="Ex.: Equipe B" />
+                  </div>
+                  <div class="field">
+                    <label for="r2_data">Entrega R2</label>
+                    <input id="r2_data" type="text" placeholder="Ex.: 11/01 12:00" />
+                  </div>
+                  <div class="field">
+                    <label for="tol">Tolerância (R1 vs SAP)</label>
+                    <input id="tol" type="number" min="0" step="0.01" value="0" />
+                  </div>
+                </div>
+                <div class="row">
+                  <button class="btn btn-primary" id="btnGerarR2" type="button" disabled>🧾 Gerar R2</button>
+                  <button class="btn" id="lblR2" type="button" disabled>📥 Importar R2</button>
+                </div>
+              </div>
+              <input id="fileR2" type="file" accept=".xlsx,.xlsm,.csv" hidden />
+
+              <div class="divider"></div>
+
+              <div class="row">
+                <div class="field" style="min-width:260px">
+                  <label for="r2Modo">Modo da R2</label>
+                  <select id="r2Modo">
+                    <option value="desvios">Somente desvios (padrão)</option>
+                    <option value="desvios_alto">Desvios + alto valor</option>
+                    <option value="alto">Somente alto valor</option>
+                  </select>
+                </div>
+                <div class="field" style="min-width:320px">
+                  <label for="valorRef">Base do alto valor</label>
+                  <select id="valorRef">
+                    <option value="impacto">Impacto do desvio na R1 (|Dif| × Vlr Unit)</option>
+                    <option value="unit">Valor unitário</option>
+                    <option value="valor_sap">Valor total SAP (Val.utiliz.livre)</option>
+                  </select>
+                </div>
+                <div class="field" style="min-width:180px">
+                  <label for="valorMin">Corte (R$)</label>
+                  <input id="valorMin" type="number" min="0" step="0.01" value="500" />
+                </div>
+              </div>
+
+              <div class="divider"></div>
+              <div id="r2Info" class="hint-box">Status: <strong>Aguardando consolidação da R1</strong> — finalize/importe a R1 para habilitar a R2.</div>
+            </div>
+          </section>
+
+        </div>
+
+        <aside style="display:grid; gap: var(--gap-lg)">
+          <section class="card" aria-labelledby="kpis-title">
+            <div class="card-header">
+              <div>
+                <h2 id="kpis-title">Conciliação Final (Resumo)</h2>
+                <p class="hint">Indicadores em tempo real após importações.</p>
+              </div>
+              <span class="chip">📊 Dashboard</span>
+            </div>
+            <div class="card-body">
+              <div class="kpi-grid">
+                <div class="kpi" data-kpi="itens" role="button" tabindex="0"><button class="kpi-action" type="button" data-export="itens" title="Exportar Excel">⬇️</button><div class="label">Quantidade Sistêmica ( SAP )</div><div class="value" id="kpiItens">0</div></div>
+                <div class="kpi" data-kpi="r2sel" role="button" tabindex="0"><button class="kpi-action" type="button" data-export="r2sel" title="Exportar Excel">⬇️</button><div class="label">Selecionados para Recontagem</div><div class="value" id="kpiR2">0</div></div>
+                <div class="kpi" data-kpi="pendtrans" role="button" tabindex="0"><button class="kpi-action" type="button" data-export="pendtrans" title="Exportar Excel">⬇️</button><div class="label">Pendência de Transferência ( Almoxarifado )</div><div class="value" id="kpiPendTrans">0</div></div>
+                <div class="kpi" data-kpi="pendbaixa" role="button" tabindex="0"><button class="kpi-action" type="button" data-export="pendbaixa" title="Exportar Excel">⬇️</button><div class="label">Pendência de Baixa ( PCM )</div><div class="value" id="kpiPendBaixas">0</div></div>
+                <div class="kpi" data-kpi="ok" role="button" tabindex="0"><button class="kpi-action" type="button" data-export="ok" title="Exportar Excel">⬇️</button><div class="label">Materiais Sem Divergências</div><div class="value" id="kpiOk" style="color:var(--success)">0</div></div>
+                <div class="kpi" data-kpi="falta" role="button" tabindex="0"><button class="kpi-action" type="button" data-export="falta" title="Exportar Excel">⬇️</button><div class="label">Materiais Com Divergências</div><div class="value" id="kpiFalta" style="color:var(--danger)">0</div></div>
+                <div class="kpi" data-kpi="sobra" role="button" tabindex="0"><button class="kpi-action" type="button" data-export="sobra" title="Exportar Excel">⬇️</button><div class="label">Materiais Com Sobras ( Físico > SAP )</div><div class="value" id="kpiSobra" style="color:var(--warning)">0</div></div>
+                <div class="kpi" data-kpi="sem" role="button" tabindex="0"><button class="kpi-action" type="button" data-export="sem" title="Exportar Excel">⬇️</button><div class="label">Materiais Sem Contagem</div><div class="value" id="kpiSem" style="color:var(--info)">0</div></div>
+                <div class="kpi" data-kpi="desvio" role="button" tabindex="0" style="grid-column:1/-1">
+                  <button class="kpi-action" type="button" data-export="desvio" title="Exportar Excel">⬇️</button>
+                  <div class="label">Desvio Total NET</div>
+                  <div class="value" id="kpiDesvio">R$ 0,00</div>
+                </div>
+                <div class="kpi" data-kpi="semvalor" role="button" tabindex="0" style="grid-column:1/-1">
+                  <button class="kpi-action" type="button" data-export="semvalor" title="Exportar Excel">⬇️</button>
+                  <div class="label">Itens Para Correção De Preço</div>
+                  <div class="value" id="kpiSemValor">0</div>
+                </div>
+              </div>
+
+              <div class="divider"></div>
+              <div class="hint-box">
+                <strong>Itens sem valor</strong> não entram no ranking. Itens que precisam de valor unitário para calcular desvio (ex.: SAP=0 e houve sobra; ou Qtd&gt;0 com Valor=0) devem ter o valor unitário informado.
+              </div>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="tops-title">
+            <div class="card-header">
+              <div>
+                <h2 id="tops-title">Top Desvios (Gráficos)</h2>
+                <p class="hint">Ranking e distribuição após cálculo do desvio (R$).</p>
+              </div>
+              <span class="chip">📈 Charts</span>
+            </div>
+            <div class="card-body">
+              <div class="chart-grid">
+                <div class="hint-box" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                  <span><strong>Top 10</strong> |Desvio (R$)|</span><span class="mono">bar</span>
+                </div>
+                <canvas id="chartTop"></canvas>
+                <div class="hint-box" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                  <span><strong>Status</strong> (distribuição)</span><span class="mono">doughnut</span>
+                </div>
+                <canvas id="chartStatus"></canvas>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </section>
+
+      <section class="card" aria-labelledby="valores-title">
+        <div class="card-header">
+          <div>
+            <h2 id="valores-title">Ajuste de Valores (Itens sem valor)</h2>
+            <p class="hint">Informe valor unitário para itens que precisam de valor para calcular desvio.</p>
+          </div>
+          <span class="chip">🧩 Ajustes</span>
+        </div>
+        <div class="card-body" id="tab_valores">
+          <p style="color:var(--muted); margin:0 0 10px">
+            Itens que precisam de valor unitário para calcular desvio (ex.: SAP=0 e houve sobra; ou Qtd&gt;0 com Valor=0). Informe o valor unitário e salve.
+          </p>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="table-title">
+        <div class="card-header">
+          <div>
+            <h2 id="table-title">Tabela — Conciliação por Item</h2>
+            <p class="hint">Pesquisar, filtrar por status/depósito.</p>
+          </div>
+          <div class="row">
+            <div class="field" style="min-width:220px">
+              <label for="q">Pesquisar</label>
+              <input id="q" type="text" placeholder="Material, descrição, centro..." />
+            </div>
+            <div class="field" style="min-width:190px">
+              <label for="fStatus">Status</label>
+              <select id="fStatus">
+                <option value="">Todos</option>
+                <option value="OK">OK</option>
+                <option value="FALTA">FALTA</option>
+                <option value="SOBRA">SOBRA</option>
+                <option value="SEM CONTAGEM">SEM CONTAGEM</option>
+              </select>
+            </div>
+            <div class="field" style="min-width:170px">
+              <label for="fDeposito">Depósito</label>
+              <input id="fDeposito" type="text" placeholder="Ex.: 0001" />
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="table-wrap limited" role="region" aria-label="Tabela de conciliação" tabindex="0">
+            <table id="tbl">
+              <thead>
+                <tr>
+                  <th>Material</th>
+                  <th>Descrição</th>
+                  <th>Centro</th>
+                  <th>Depósito</th>
+                  <th>UMB</th>
+                  <th class="num">Qtd SAP</th>
+                  <th class="num">R1</th>
+                  <th class="num">R2</th>
+                  <th class="num">Final</th>
+                  <th>Status</th>
+                  <th class="num">Vlr Unit</th>
+                  <th class="num">Vlr SAP</th>
+                  <th class="num">Desvio (R$)</th>
+                  <th>Contador R1</th>
+                  <th>Entrega R1</th>
+                  <th>Contador R2</th>
+                  <th>Entrega R2</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="divider"></div>
+          <p class="hint" style="margin:0">📌 Final = R2 quando existir; senão R1. <span id="updated" class="mono">—</span></p>
+        </div>
+      </section>
+
+    </main>
+
+    <footer>Aplicativo realizado por Lucas Marques</footer>
+
+  </div>
+
+  </div>
+
+  <!-- XLSX com estilos (fork compatível com SheetJS) -->
+
+  <!-- Wizard (fluxo por etapas) -->
+  <div class="modal-backdrop" id="wzBackdrop" hidden></div>
+
+  <div class="modal" id="dlgWizard" role="dialog" aria-modal="true" aria-labelledby="wzTitle" hidden>
+    <div class="modal-panel" id="wzPanel">
+      <div class="modal-head">
+        <div class="wz-top" style="width:100%">
+          <div>
+            <div class="chip">🧠 Fluxo guiado</div>
+            <h3 id="wzTitle" style="margin:8px 0 0; font-size:16px; font-weight:900;">Inventário</h3>
+            <div class="small" id="wzSubtitle">Etapa 1 de 4</div>
+          </div>
+
+          <div class="wz-progress" aria-label="Progresso">
+            <div class="wz-pill" id="wzP1"><span class="dot"></span>1 MB52</div>
+            <div class="wz-pill" id="wzP2"><span class="dot"></span>2 Pendências</div>
+            <div class="wz-pill" id="wzP3"><span class="dot"></span>3 R1</div>
+            <div class="wz-pill" id="wzP4"><span class="dot"></span>4 R2</div>
+          </div>
+
+          <button class="btn btn-ghost" id="btnWzClose" type="button" aria-label="Fechar">✖</button>
+        </div>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Step 1 -->
+        <div class="wz-step" data-step="1">
+          <div class="hint-box">
+            <strong>1 Importar MB52</strong>
+            <div class="small">Anexe o MB52 exportado do SAP. Essa é a base de todo o inventário.</div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row" style="justify-content:space-between; align-items:flex-end;">
+            <div class="field" style="min-width:320px">
+              <label>Arquivo MB52</label>
+              <input id="wzMb52Name" type="text" placeholder="Nenhum arquivo carregado" readonly />
+            </div>
+            <div class="row">
+              <button class="btn btn-primary" id="btnWzAttachMb52" type="button">📎 Anexar MB52</button>
+</div>
+          </div>
+
+          <div class="divider"></div>
+          <div class="hint-box" id="wzMb52Info">Importe o MB52 para liberar as próximas etapas.</div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="wz-step" data-step="2" hidden>
+          <div class="hint-box">
+            <strong>2 Pendências do depósito</strong>
+            <div class="small">Opcional. Ajusta a Qtd SAP esperada no depósito informado: Transferências somam, Baixas subtraem.</div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row" style="align-items:flex-end; justify-content:space-between;">
+            <div class="row">
+              <div class="field" style="min-width:180px">
+                <label>Depósito</label>
+                <input id="wzDep" type="text" placeholder="Ex.: 3242" />
+              </div>
+              <div class="field" style="min-width:320px">
+                <label>Opção</label>
+                <div class="hint-box" style="display:flex; gap:10px; align-items:center;">
+                  <input id="wzSkipPend" type="checkbox" />
+                  <span>Ignorar importação de pendências</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <button class="btn btn-primary" id="btnWzTrans" type="button">📥 Transferências</button>
+              <button class="btn btn-primary" id="btnWzBaixas" type="button">📥 Baixas</button>
+              <button class="btn" id="btnWzClearPend" type="button">🧹 Limpar</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+          <div class="hint-box" id="wzPendInfo">Informe o depósito para filtrar as planilhas, ou marque para ignorar.</div>
+
+          <div class="divider"></div>
+          <div class="row" style="justify-content:flex-end;">
+</div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="wz-step" data-step="3" hidden>
+          <div class="hint-box">
+            <strong>3 Rodada 1</strong>
+            <div class="small">Gere a lista para contagem completa e depois importe o retorno preenchido.</div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row" style="align-items:flex-end; justify-content:space-between;">
+            <div class="row">
+              <div class="field">
+                <label>Contador</label>
+                <input id="wzR1Nome" type="text" placeholder="Equipe ou nome" />
+              </div>
+              <div class="field">
+                <label>Entrega</label>
+                <input id="wzR1Data" type="text" placeholder="Ex.: 10/01 18:00" />
+              </div>
+            </div>
+
+            <div class="row">
+              <button class="btn btn-primary" id="btnWzGerarR1" type="button">🧾 Gerar R1</button>
+              <button class="btn" id="btnWzImportR1" type="button">📥 Importar R1</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+          <div class="hint-box" id="wzR1Info">Aguardando MB52.</div>
+
+          <div class="divider"></div>
+          <div class="row" style="justify-content:flex-end;">
+</div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="wz-step" data-step="4" hidden>
+          <div class="hint-box">
+            <strong>4 Rodada 2</strong>
+            <div class="small">Aparece quando há itens selecionados por desvio ou alto valor. Se não houver, você pode concluir direto.</div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row" style="align-items:flex-end; justify-content:space-between;">
+            <div class="row">
+              <div class="field">
+                <label>Contador</label>
+                <input id="wzR2Nome" type="text" placeholder="Equipe ou nome" />
+              </div>
+              <div class="field">
+                <label>Entrega</label>
+                <input id="wzR2Data" type="text" placeholder="Ex.: 11/01 12:00" />
+              </div>
+              <div class="field">
+                <label>Tolerância</label>
+                <input id="wzTol" type="number" min="0" step="0.01" />
+              </div>
+            </div>
+
+            <div class="row">
+              <button class="btn btn-primary" id="btnWzGerarR2" type="button">🧾 Gerar R2</button>
+              <button class="btn" id="btnWzImportR2" type="button">📥 Importar R2</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row">
+            <div class="field" style="min-width:260px">
+              <label>Modo</label>
+              <select id="wzR2Modo">
+                <option value="desvios">Somente desvios</option>
+                <option value="desvios_alto">Desvios + alto valor</option>
+                <option value="alto">Somente alto valor</option>
+              </select>
+            </div>
+            <div class="field" style="min-width:320px">
+              <label>Base do alto valor</label>
+              <select id="wzValorRef">
+                <option value="impacto">Impacto do desvio na R1</option>
+                <option value="unit">Valor unitário</option>
+                <option value="valor_sap">Valor total SAP</option>
+              </select>
+            </div>
+            <div class="field" style="min-width:180px">
+              <label>Corte (R$)</label>
+              <input id="wzValorMin" type="number" min="0" step="0.01" />
+            </div>
+          </div>
+
+          <div class="divider"></div>
+          <div class="hint-box" id="wzR2Info">Aguardando seleção de R2.</div>
+
+          <div class="divider"></div>
+          <div class="row" style="justify-content:flex-end;">
+<button class="btn btn-primary" id="btnWzFinish" type="button">✅ Concluir</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- Modal KPI (detalhes dos cards) -->
+  <div class="modal-backdrop kpi" id="kpiBackdrop" hidden></div>
+
+  <div class="modal kpi" id="dlgKpi" role="dialog" aria-modal="true" aria-labelledby="kpiTitle" hidden>
+    <div class="modal-panel" id="kpiPanel">
+      <div class="modal-head">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; width:100%">
+          <div>
+            <div class="chip">📦 Materiais</div>
+            <h3 id="kpiTitle" style="margin:8px 0 0; font-size:16px; font-weight:900;">Detalhes</h3>
+            <div class="small" id="kpiSubtitle">0 itens</div>
+          </div>
+          <div class="row">
+            <button class="btn btn-primary" id="btnKpiExport" type="button">⬇️ Exportar Excel</button>
+            <button class="btn btn-ghost" id="btnKpiClose" type="button" aria-label="Fechar">✖</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div class="row" style="justify-content:space-between; align-items:flex-end;">
+          <div class="field" style="min-width:320px">
+            <label for="kpiSearch">Pesquisar</label>
+            <input id="kpiSearch" type="text" placeholder="Material, descrição, centro, depósito" />
+          </div>
+          <span class="chip" id="kpiChip">Filtro: -</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="table-wrap limited" role="region" aria-label="Tabela do card" tabindex="0">
+          <table id="kpiTbl" style="min-width:1200px">
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th>Descrição</th>
+                <th>Centro</th>
+                <th>Depósito</th>
+                <th class="num">Qtd SAP</th>
+                <th class="num">Orig</th>
+                <th class="num">+Transf</th>
+                <th class="num">-Baixa</th>
+                <th class="num">Final</th>
+                <th>Status</th>
+                <th class="num">Vlr Unit</th>
+                <th class="num">Desvio (R$)</th>
+              </tr>
+            </thead>
+            <tbody id="kpiTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="divider"></div>
+        <div class="hint-box" id="kpiEmpty" hidden>Nenhum item para este filtro.</div>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- Relatório PDF (gerado sob demanda) -->
+  <div id="pdfReportHost" style="position:fixed; left:-10000px; top:0; width:920px; background:white; color:#111; padding:18px; border:0; z-index:-1;"></div>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+
+  <script>
+    // Estado
+    let baseRows=[], r1Rows=[], r2Rows=[], merged=[];
+    let r2ListKeys=new Set();
+    let overrides={};
+    let chartTop=null, chartStatus=null;
+
+    // Pendentes
+    let depPendValue = '';
+    let transAdj = new Map();     // key: materialAdjKey -> qty
+    let baixasAdj = new Map();    // key: materialAdjKey -> qty
+    let transMeta = { file:'', rowsIn:0, rowsOk:0, items:0, total:0, ignoredType:0, ignoredDep:0, unknownMat:0 };
+    let baixasMeta = { file:'', rowsIn:0, rowsOk:0, items:0, total:0, ignoredDep:0, unknownMat:0 };
+
+    let extraBaseRows = [];
+    let transDesc = new Map(), transCodeDisp = new Map();
+    let baixasDesc = new Map(), baixasCodeDisp = new Map();
+
+    const dom={
+      fileBase: document.getElementById('fileBase'),
+      fileR1: document.getElementById('fileR1'),
+      fileR2: document.getElementById('fileR2'),
+      btnImportBase: document.getElementById('btnImportBase'),
+      btnClearBase: document.getElementById('btnClearBase'),
+      btnGerarR1: document.getElementById('btnGerarR1'),
+      btnGerarR2: document.getElementById('btnGerarR2'),
+      btnExportFinal: document.getElementById('btnExportFinal'),
+      btnExportR2Lista: document.getElementById('btnExportR2Lista'),
+      btnExportSemValor: document.getElementById('btnExportSemValor'),
+      btnExportPDF: document.getElementById('btnExportPDF'),
+      btnReset: document.getElementById('btnReset'),
+      lblR1: document.getElementById('lblR1'),
+      lblR2: document.getElementById('lblR2'),
+      baseInfo: document.getElementById('baseInfo'),
+      fileNameBase: document.getElementById('fileNameBase'),
+      r1Info: document.getElementById('r1Info'),
+      r2Info: document.getElementById('r2Info'),
+      r1_nome: document.getElementById('r1_nome'),
+      r1_data: document.getElementById('r1_data'),
+      r2_nome: document.getElementById('r2_nome'),
+      r2_data: document.getElementById('r2_data'),
+      tol: document.getElementById('tol'),
+      r2Modo: document.getElementById('r2Modo'),
+      valorRef: document.getElementById('valorRef'),
+      valorMin: document.getElementById('valorMin'),
+      tbody: document.querySelector('#tbl tbody'),
+      q: document.getElementById('q'),
+      fStatus: document.getElementById('fStatus'),
+      fDeposito: document.getElementById('fDeposito'),
+      kpiItens: document.getElementById('kpiItens'),
+      kpiOk: document.getElementById('kpiOk'),
+      kpiFalta: document.getElementById('kpiFalta'),
+      kpiSobra: document.getElementById('kpiSobra'),
+      kpiR2: document.getElementById('kpiR2'),
+      kpiPendTrans: document.getElementById('kpiPendTrans'),
+      kpiPendBaixas: document.getElementById('kpiPendBaixas'),
+      kpiSem: document.getElementById('kpiSem'),
+      kpiDesvio: document.getElementById('kpiDesvio'),
+      kpiSemValor: document.getElementById('kpiSemValor'),
+      tabValores: document.getElementById('tab_valores'),
+      updated: document.getElementById('updated'),
+      step1: document.getElementById('step1'),
+      step2: document.getElementById('step2'),
+      step3: document.getElementById('step3'),
+      step4: document.getElementById('step4'),
+
+      depPend: document.getElementById('depPend'),
+      fileTrans: document.getElementById('fileTrans'),
+      fileBaixas: document.getElementById('fileBaixas'),
+      btnImportTrans: document.getElementById('btnImportTrans'),
+      btnImportBaixas: document.getElementById('btnImportBaixas'),
+      btnClearPend: document.getElementById('btnClearPend'),
+      fileNameTrans: document.getElementById('fileNameTrans'),
+      fileNameBaixas: document.getElementById('fileNameBaixas'),
+      pendInfo: document.getElementById('pendInfo')
+    };
+
+    const fmtMoney = (v) => (isFinite(v) ? v : 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    const fmtNum = (v) => (v===null||v===undefined||Number.isNaN(v)) ? '' : Number(v).toLocaleString('pt-BR');
+
+    function normKey(v){
+      if(v===null||v===undefined) return '';
+      let s=String(v).trim();
+      if(s.endsWith('.0')) s=s.slice(0,-2);
+      s=s.replaceAll(' ','');
+      if(s.toLowerCase()==='nan') return '';
+      return s;
+    }
+    function buildKey(o){return `${normKey(o.Material)}|${normKey(o.Centro)}|${normKey(o['Depósito'])}`;}
+    function pick(o, keys){for(const k of keys){if(Object.prototype.hasOwnProperty.call(o,k)) return o[k];} return ''}
+    function toNum(x){
+      if(x===null||x===undefined||x==='') return NaN;
+      if(typeof x==='number') return x;
+      const s=String(x).replaceAll('.','').replace(',', '.');
+      const n=Number(s);
+      return Number.isFinite(n)?n:NaN;
+    }
+    function safeSum(arr){return arr.reduce((a,b)=>a+(Number.isFinite(b)?b:0),0);}
+
+    function saveOverrides(){localStorage.setItem('inv_overrides_alto_valor', JSON.stringify(overrides));}
+    function loadOverrides(){try{overrides=JSON.parse(localStorage.getItem('inv_overrides_alto_valor')||'{}')||{};}catch{overrides={};}}
+
+    function setStepper(stage){
+      [dom.step1, dom.step2, dom.step3, dom.step4].forEach((el,i)=>{
+        if(!el) return;
+        el.classList.toggle('active', i < stage);
+      });
+    }
+
+function showToast(message, detail='') {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = `<span>${message}</span>` + (detail ? `<small>${detail}</small>` : '');
+  document.body.appendChild(t);
+  setTimeout(() => {
+    t.style.transition = 'opacity .25s ease, transform .25s ease';
+    t.style.opacity = '0';
+    t.style.transform = 'translateY(6px)';
+  }, 1800);
+  setTimeout(() => t.remove(), 2200);
+}
+
+    function stripLeadingZeros(s){
+      const t = String(s ?? '').trim();
+      if(!t) return '';
+      if(!/^\d+$/.test(t)) return t;
+      const x = t.replace(/^0+/, '');
+      return x === '' ? '0' : x;
+    }
+
+    function normTextLoose(v){
+      if(v===null || v===undefined) return '';
+      let s = String(v).trim();
+      try{
+        s = s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      }catch{}
+      s = s.toUpperCase();
+      return s;
+    }
+
+    function depositEquals(a,b){
+      const na = stripLeadingZeros(normKey(a));
+      const nb = stripLeadingZeros(normKey(b));
+      return na && nb && na === nb;
+    }
+
+    function materialAdjKey(v){
+      const s = normKey(v);
+      if(!s) return '';
+      if(/^\d+$/.test(s)) return stripLeadingZeros(s);
+      return s.toUpperCase();
+    }
+
+    async function readFileAOA(file){
+      const ext = file.name.toLowerCase().split('.').pop();
+      if(ext==='csv'){
+        const text = await file.text();
+        const sep = text.includes(';')?';':',';
+        const lines = text.split(/\r?\n/).filter(l => l.trim().length>0);
+        return lines.map(line => line.split(sep));
+      }
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data,{type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      return XLSX.utils.sheet_to_json(ws,{header:1, defval:''});
+    }
+
+    function baseMaterialsByDeposit(dep){
+      const set = new Set();
+      for(const b of getBaseAllRows()){
+        if(depositEquals(b['Depósito'], dep)){
+          set.add(materialAdjKey(b.Material));
+        }
+      }
+      return set;
+    }
+
+    function getAdjFor(base){
+      const dep = normKey(dom.depPend?.value || '');
+      if(!dep) return {t:0,b:0,has:false,depOk:false};
+      if(!depositEquals(base['Depósito'], dep)) return {t:0,b:0,has:false,depOk:false};
+
+      const mk = materialAdjKey(base.Material);
+      const t = Number(transAdj.get(mk) || 0);
+      const b = Number(baixasAdj.get(mk) || 0);
+      const has = (Math.abs(t) > 0 || Math.abs(b) > 0);
+      return {t,b,has,depOk:true};
+    }
+
+    function getSapQtyAdjusted(base){
+      const sapQtyOriginal = Number(base['Utilização livre']) || 0;
+      const adj = getAdjFor(base);
+      return sapQtyOriginal + (Number(adj.t)||0) - (Number(adj.b)||0);
+    }
+
+    function isTransferTypeCell(v){
+      const s = normTextLoose(v);
+      return s.includes('TRANSFER');
+    }
+
+    function parseTransferenciasAOA(aoa, dep){
+      const depSet = baseMaterialsByDeposit(dep);
+
+      const map = new Map();
+      let rowsIn = Math.max(0, (aoa?.length||0) - 1);
+      let rowsOk=0, ignoredType=0, ignoredDep=0;
+      let total=0;
+
+      for(let i=1;i<(aoa?.length||0);i++){
+        const r = aoa[i] || [];
+        const tipo = r[2];     // coluna C
+        const deposito = r[5]; // coluna F
+        if(!depositEquals(deposito, dep)){ ignoredDep++; continue; }
+        if(!isTransferTypeCell(tipo)){ ignoredType++; continue; }
+
+        const codDisp = normKey(r[9]);           // coluna J (display)
+        const codKey = materialAdjKey(r[9]);     // coluna J (key)
+        const desc = String(r[10] ?? '').trim(); // coluna K
+        const qtd = toNum(r[13]);                // coluna N
+
+        if(!codKey || !Number.isFinite(qtd) || qtd===0) continue;
+
+        const cur = map.get(codKey) || { desc:'', qty:0, codeDisp:'' };
+        if(!cur.codeDisp && codDisp) cur.codeDisp = codDisp;
+        if(!cur.desc && desc) cur.desc = desc;
+        cur.qty += qtd;
+        map.set(codKey, cur);
+
+        total += qtd;
+        rowsOk++;
+      }
+
+      let unknownMat = 0;
+      for(const k of map.keys()){
+        if(!depSet.has(k)) unknownMat++;
+      }
+
+      return {
+        map,
+        meta:{
+          file:'',
+          rowsIn, rowsOk,
+          items: map.size,
+          total,
+          ignoredType,
+          ignoredDep,
+          unknownMat
+        }
+      };
+    }
+
+    function parseBaixasAOA(aoa, dep){
+      const depSet = baseMaterialsByDeposit(dep);
+
+      const map = new Map();
+      let rowsIn = Math.max(0, (aoa?.length||0) - 1);
+      let rowsOk=0, ignoredDep=0;
+      let total=0;
+
+      for(let i=1;i<(aoa?.length||0);i++){
+        const r = aoa[i] || [];
+        const deposito = r[2]; // coluna C
+        if(!depositEquals(deposito, dep)){ ignoredDep++; continue; }
+
+        const codDisp = normKey(r[4]);           // coluna E (display)
+        const codKey = materialAdjKey(r[4]);     // coluna E (key)
+        const desc = String(r[5] ?? '').trim();  // coluna F
+        const qtd = toNum(r[7]);                 // coluna H
+
+        if(!codKey || !Number.isFinite(qtd) || qtd===0) continue;
+
+        const cur = map.get(codKey) || { desc:'', qty:0, codeDisp:'' };
+        if(!cur.codeDisp && codDisp) cur.codeDisp = codDisp;
+        if(!cur.desc && desc) cur.desc = desc;
+        cur.qty += qtd;
+        map.set(codKey, cur);
+
+        total += qtd;
+        rowsOk++;
+      }
+
+      let unknownMat = 0;
+      for(const k of map.keys()){
+        if(!depSet.has(k)) unknownMat++;
+      }
+
+      return {
+        map,
+        meta:{
+          file:'',
+          rowsIn, rowsOk,
+          items: map.size,
+          total,
+          ignoredDep,
+          unknownMat
+        }
+      };
+    }
+
+    function clearPendentesUI(){
+      transAdj = new Map();
+      baixasAdj = new Map();
+      transMeta = { file:'', rowsIn:0, rowsOk:0, items:0, total:0, ignoredType:0, ignoredDep:0, unknownMat:0 };
+      baixasMeta = { file:'', rowsIn:0, rowsOk:0, items:0, total:0, ignoredDep:0, unknownMat:0 };
+      extraBaseRows = [];
+      transDesc = new Map(); transCodeDisp = new Map();
+      baixasDesc = new Map(); baixasCodeDisp = new Map();
+      if(dom.fileNameTrans) dom.fileNameTrans.value = '';
+      if(dom.fileNameBaixas) dom.fileNameBaixas.value = '';
+      updatePendInfo();
+    }
+
+    function updatePendInfo(){
+      const hasMB52 = baseRows.length>0;
+      const dep = String(dom.depPend?.value || '').trim();
+      const depOk = !!dep;
+
+      const enable = hasMB52 && depOk;
+      if(dom.btnImportTrans) dom.btnImportTrans.disabled = !enable;
+      if(dom.btnImportBaixas) dom.btnImportBaixas.disabled = !enable;
+      if(dom.btnClearPend) dom.btnClearPend.disabled = (!enable) || (transAdj.size===0 && baixasAdj.size===0);
+
+      if(!hasMB52){
+        dom.pendInfo.innerHTML = 'Status: <strong>Aguardando MB52</strong> — importe o MB52 e informe o depósito para habilitar os ajustes pendentes.';
+        return;
+      }
+      if(!depOk){
+        dom.pendInfo.innerHTML = 'Status: <strong>Informe o depósito</strong> — necessário para filtrar as duas planilhas.';
+        return;
+      }
+
+      const t = transMeta.total || 0;
+      const b = baixasMeta.total || 0;
+
+      let msg = `Status: Pronto — Depósito ${dep}. `;
+      msg += `Transferências: ${transMeta.items.toLocaleString('pt-BR')} materiais, total ${fmtNum(t)}. `;
+      msg += `Baixas: ${baixasMeta.items.toLocaleString('pt-BR')} materiais, total ${fmtNum(b)}. `;
+
+      const centers = new Set(baseRows.filter(x=>depositEquals(x['Depósito'], dep)).map(x=>String(x.Centro)));
+      if(centers.size > 1){
+        msg += `Atenção: este depósito aparece em ${centers.size} centros no MB52 (ajuste aplicado por depósito). `;
+      }
+
+      if(transMeta.unknownMat>0){
+        msg += `Transferências: ${transMeta.unknownMat} material(is) fora do MB52 deste depósito (serão adicionados como itens extras). `;
+      }
+      if(baixasMeta.unknownMat>0){
+        msg += `Baixas: ${baixasMeta.unknownMat} material(is) fora do MB52 deste depósito (serão adicionados como itens extras).`;
+      }
+
+      dom.pendInfo.textContent = msg.trim();
+    }
+
+    function rebuildExtraBaseRows(){
+      extraBaseRows = [];
+      const dep = String(dom.depPend?.value || '').trim();
+      if(!dep || baseRows.length===0) return;
+      const existing = baseMaterialsByDeposit(dep);
+      const keys = new Set([...transAdj.keys(), ...baixasAdj.keys()]);
+      for(const mk of keys){
+        if(existing.has(mk)) continue;
+        const codeDisp = transCodeDisp.get(mk) || baixasCodeDisp.get(mk) || mk;
+        const desc = transDesc.get(mk) || baixasDesc.get(mk) || '';
+        extraBaseRows.push({
+          Material: normKey(codeDisp) || String(codeDisp),
+          Centro: 'PEND',
+          'Depósito': normKey(dep),
+          'Texto breve material': desc,
+          UMB: '',
+          'Utilização livre': 0,
+          'Val.utiliz.livre': 0
+        });
+      }
+    }
+
+    function getBaseAllRows(){
+      return baseRows.concat(extraBaseRows || []);
+    }
+
+    async function readFile(file){
+      const ext=file.name.toLowerCase().split('.').pop();
+      if(ext==='csv'){
+        const text=await file.text();
+        const sep=text.includes(';')?';':',';
+        const lines=text.split(/\r?\n/).filter(Boolean);
+        const headers=lines[0].split(sep).map(h=>h.trim());
+        return lines.slice(1).map(line=>{
+          const cols=line.split(sep);
+          const obj={};
+          headers.forEach((h,i)=>obj[h]=cols[i]??'');
+          return obj;
+        });
+      }
+      const data=await file.arrayBuffer();
+      const wb=XLSX.read(data,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      return XLSX.utils.sheet_to_json(ws,{defval:''});
+    }
+
+    function mapBaseRows(json){
+      return json.map(o=>{
+        const Material=normKey(pick(o,['Material']));
+        const Centro=normKey(pick(o,['Centro']));
+        const Deposito=normKey(pick(o,['Depósito','Depósito ']));
+        if(!Material||!Centro||!Deposito) return null;
+        const desc=pick(o,['Texto breve material','Texto breve material ']);
+        const umb=pick(o,['UMB']);
+        const qtd=toNum(pick(o,['Utilização livre','Utilização livre ']));
+        const val=toNum(pick(o,['Val.utiliz.livre','Val.utiliz.livre ']));
+        return {
+          Material, Centro, 'Depósito':Deposito,
+          'Texto breve material':desc,
+          UMB: umb,
+          'Utilização livre': Number.isFinite(qtd)?qtd:0,
+          'Val.utiliz.livre': Number.isFinite(val)?val:0
+        };
+      }).filter(Boolean);
+    }
+
+    function aggregateBase(rows){
+      const map=new Map();
+      for(const r of rows){
+        const k=buildKey(r);
+        if(!map.has(k)) map.set(k,{...r});
+        else{
+          const cur=map.get(k);
+          cur['Utilização livre']+=Number(r['Utilização livre'])||0;
+          cur['Val.utiliz.livre']+=Number(r['Val.utiliz.livre'])||0;
+        }
+      }
+      return Array.from(map.values());
+    }
+
+    function mapCountRows(json){
+      return json.map(o=>{
+        const Material=normKey(pick(o,['Material']));
+        const Centro=normKey(pick(o,['Centro']));
+        const Deposito=normKey(pick(o,['Depósito','Depósito ']));
+        if(!Material||!Centro||!Deposito) return null;
+        const cont=toNum(pick(o,['Contagem','Qtd Físico','Qtd Fisico','Quantidade']));
+        return {Material, Centro, 'Depósito':Deposito, Contagem: Number.isFinite(cont)?cont:null};
+      }).filter(Boolean);
+    }
+
+    function aggregateCount(rows){
+      const map=new Map();
+      for(const r of rows){
+        const k=buildKey(r);
+        if(!map.has(k)) map.set(k,{...r});
+        else{
+          const cur=map.get(k);
+          if(cur.Contagem===null && r.Contagem!==null) cur.Contagem=r.Contagem;
+          else if(cur.Contagem!==null && r.Contagem!==null) cur.Contagem+=r.Contagem;
+        }
+      }
+      return map;
+    }
+
+    function computeUnit(base){
+      const sapQty=Number(base['Utilização livre'])||0;
+      const sapVal=Number(base['Val.utiliz.livre'])||0;
+      const key=buildKey(base);
+      const override=overrides[key];
+      const unit=(override!==undefined && override!==null && override!=='') ? Number(override)
+               : (sapQty>0 ? (sapVal/sapQty) : null);
+      return {sapQty, sapVal, unit, override: override!==undefined};
+    }
+
+    function statusFromFinal(finalQty, sapQty){
+      if(finalQty===null || finalQty===undefined) return 'SEM CONTAGEM';
+      const dif=finalQty - sapQty;
+      if(dif===0) return 'OK';
+      return dif<0 ? 'FALTA' : 'SOBRA';
+    }
+
+    function buildR2Selection(){
+      if(baseRows.length===0 || r1Rows.length===0) return;
+      rebuildExtraBaseRows();
+
+      const tol=Number(dom.tol.value)||0;
+      const modo=dom.r2Modo.value;
+      const baseValor=dom.valorRef.value;
+      const corte=Number(dom.valorMin.value)||0;
+
+      const map1=aggregateCount(r1Rows);
+      r2ListKeys=new Set();
+      let qtdDesvios=0, qtdAlto=0;
+
+      for(const b of getBaseAllRows()){
+        const key=buildKey(b);
+        const {sapQty: sapQtyOriginal, sapVal, unit} = computeUnit(b);
+        const sapQty = getSapQtyAdjusted(b);
+        const r1=map1.get(key)?.Contagem ?? null;
+
+        let isDesvio=false;
+        let difR1=null;
+        if(r1===null){
+          isDesvio=true;
+        } else {
+          difR1=r1 - sapQty;
+          if(Math.abs(difR1) > tol) isDesvio=true;
+        }
+
+        let isAlto=false;
+        if(corte>0){
+          if(baseValor==='unit'){
+            isAlto = (unit!==null && unit>=corte);
+          } else if(baseValor==='valor_sap'){
+            isAlto = (sapVal>=corte);
+          } else {
+            if(difR1!==null && unit!==null){
+              isAlto = (Math.abs(difR1) * unit) >= corte;
+            }
+          }
+        }
+
+        let entra=false;
+        if(modo==='desvios') entra=isDesvio;
+        else if(modo==='alto') entra=isAlto;
+        else entra=isDesvio || isAlto;
+
+        if(entra){
+          r2ListKeys.add(key);
+          if(isDesvio) qtdDesvios++;
+          if(isAlto) qtdAlto++;
+        }
+      }
+
+      dom.kpiR2.textContent = r2ListKeys.size.toLocaleString('pt-BR');
+      dom.btnGerarR2.disabled = r2ListKeys.size===0;
+      dom.btnExportR2Lista.disabled = r2ListKeys.size===0;
+      dom.lblR2.disabled = r2ListKeys.size===0;
+
+      if(r2ListKeys.size===0){
+        dom.r2Info.innerHTML = 'Status: <strong>Nenhum item selecionado para R2</strong> — ajuste tolerância/corte/modo e reimporte a R1.';
+      } else {
+        let msg = `Status: R2 pronta — ${r2ListKeys.size} itens.`;
+        msg += ` (Desvios: ${qtdDesvios}`;
+        if(modo!=='desvios') msg += ` | Alto valor: ${qtdAlto}`;
+        msg += `)`;
+        dom.r2Info.textContent = msg;
+      }
+    }
+
+    function reconcileFinal(){
+      if(baseRows.length===0) return;
+      rebuildExtraBaseRows();
+      const map1=aggregateCount(r1Rows);
+      const map2=aggregateCount(r2Rows);
+
+      merged = getBaseAllRows().map(b=>{
+        const {sapQty: sapQtyOriginal, sapVal, unit, override} = computeUnit(b);
+        const sapQty = getSapQtyAdjusted(b);
+        const adj = getAdjFor(b);
+
+        const key=buildKey(b);
+        const r1=map1.get(key)?.Contagem ?? null;
+        const r2=map2.get(key)?.Contagem ?? null;
+        const finalQty = (r2!==null && r2!==undefined) ? r2 : r1;
+        const status = statusFromFinal(finalQty, sapQty);
+
+        const desvio = (finalQty!==null && unit!==null) ? ((finalQty - sapQty) * unit) : null;
+
+        const prob1 = (sapQty>0 && Math.abs(sapVal) < 1e-9);
+        const prob2 = (sapQty==0 && Math.abs(sapVal) < 1e-9 && finalQty!==null && finalQty>0);
+        const prob3 = ((unit===null || Math.abs(unit)<1e-12) && finalQty!==null && finalQty!==sapQty);
+        const prob4 = (sapQty < 0 && (unit===null || Math.abs(unit)<1e-12));
+        const needsValue = (prob1 || prob2 || prob3 || prob4) && !override;
+
+        return {
+          Material: b.Material,
+          'Texto breve material': b['Texto breve material'],
+          Centro: b.Centro,
+          'Depósito': b['Depósito'],
+          UMB: b.UMB,
+
+          QtdSAP: sapQty,
+          QtdSAP_Original: sapQtyOriginal,
+          AjusteTransfer: adj.depOk ? (Number(adj.t)||0) : 0,
+          AjusteBaixa: adj.depOk ? (Number(adj.b)||0) : 0,
+
+          R1: r1,
+          R2: r2,
+          Final: finalQty,
+          Status: status,
+          ValorUnit: unit,
+          ValorSAP: sapVal,
+          Desvio: desvio,
+          ContadorR1: dom.r1_nome.value||'',
+          EntregaR1: dom.r1_data.value||'',
+          ContadorR2: dom.r2_nome.value||'',
+          EntregaR2: dom.r2_data.value||'',
+          NeedsValue: needsValue,
+          ValorAjustado: override
+        };
+      });
+
+      dom.btnExportFinal.disabled = merged.length===0;
+      const btnPdf = document.getElementById('btnExportPDF');
+      if(btnPdf) btnPdf.disabled = merged.length===0;
+      if(dom.btnExportSemValor) dom.btnExportSemValor.disabled = merged.filter(r=>r.NeedsValue).length===0;
+      if(dom.btnExportPDF) dom.btnExportPDF.disabled = merged.length===0;
+
+      setStepper(r2Rows.length>0 ? 4 : (r1Rows.length>0 ? 3 : (baseRows.length>0 ? 2 : 1)));
+      render();
+    }
+
+    function exportXLSX(filename, rows, sheetName){
+      const wb = XLSX.utils.book_new();
+
+      const headers = (rows && rows.length) ? Object.keys(rows[0]) : [];
+      const aoa = [headers];
+      for(const r of (rows||[])) aoa.push(headers.map(h => r[h]));
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+      const cols = headers.map(h => {
+        let max = String(h).length;
+        for(const r of (rows||[])) {
+          const v = r[h];
+          const s = (v===null||v===undefined) ? '' : String(v);
+          if(s.length > max) max = s.length;
+        }
+        return { wch: Math.min(60, max + 2) };
+      });
+      if(cols.length) ws['!cols'] = cols;
+
+      if(headers.length){
+        ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' };
+      }
+
+      const border = {
+        top:    { style: 'thin', color: { rgb: 'FF2D3748' } },
+        bottom: { style: 'thin', color: { rgb: 'FF2D3748' } },
+        left:   { style: 'thin', color: { rgb: 'FF2D3748' } },
+        right:  { style: 'thin', color: { rgb: 'FF2D3748' } }
+      };
+
+      const headerStyle = {
+        fill: { patternType: 'solid', fgColor: { rgb: 'FF00A651' } },
+        font: { bold: true, color: { rgb: 'FF000000' } },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+        border
+      };
+
+      const cellStyle = {
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: false },
+        border
+      };
+
+      if(ws['!ref']){
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        ws['!rows'] = ws['!rows'] || [];
+        ws['!rows'][0] = { hpt: 20 };
+
+        for(let C = range.s.c; C <= range.e.c; ++C){
+          const addr = XLSX.utils.encode_cell({ r: 0, c: C });
+          if(ws[addr]) ws[addr].s = headerStyle;
+        }
+
+        for(let R = 1; R <= range.e.r; ++R){
+          for(let C = range.s.c; C <= range.e.c; ++C){
+            const addr = XLSX.utils.encode_cell({ r: R, c: C });
+            if(ws[addr]) ws[addr].s = cellStyle;
+          }
+        }
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      XLSX.writeFile(wb, filename);
+    }
+
+    // ✅ Regra da R1: remover itens com Qtd SAP ajustada = 0
+    function exportR1(){
+      const baseAll = getBaseAllRows();
+      const total = baseAll.length;
+      const filtrados = baseAll.filter(r => (getSapQtyAdjusted(r) || 0) !== 0);
+      const removidos = total - filtrados.length;
+
+      const rows = filtrados.map(r => ({
+        Material:r.Material,
+        Centro:r.Centro,
+        'Depósito':r['Depósito'],
+        'Texto breve material':r['Texto breve material'],
+        UMB:r.UMB,
+        Contagem:''
+      }));
+
+      dom.r1Info.innerHTML = `Status: <strong>R1 gerada</strong> — ${filtrados.length.toLocaleString('pt-BR')} itens (removidos ${removidos.toLocaleString('pt-BR')} com Qtd SAP = 0).`;
+      exportXLSX(`Contagem_R1_${new Date().toISOString().slice(0,10)}.xlsx`, rows, 'R1');
+    }
+
+    // ✅ Regra da R2: remover itens com Qtd SAP ajustada = 0
+    function exportR2(){
+      const baseAll = getBaseAllRows();
+      const selecionados = baseAll.filter(r=>r2ListKeys.has(buildKey(r)));
+      const filtrados = selecionados.filter(r => (getSapQtyAdjusted(r) || 0) !== 0);
+      const removidos = selecionados.length - filtrados.length;
+
+      const rows = filtrados.map(r=>({
+        Material:r.Material,
+        Centro:r.Centro,
+        'Depósito':r['Depósito'],
+        'Texto breve material':r['Texto breve material'],
+        UMB:r.UMB,
+        Contagem:''
+      }));
+
+      dom.r2Info.innerHTML = `Status: <strong>R2 gerada</strong> — ${filtrados.length.toLocaleString('pt-BR')} itens (removidos ${removidos.toLocaleString('pt-BR')} com Qtd SAP = 0).`;
+      exportXLSX(`Contagem_R2_${new Date().toISOString().slice(0,10)}.xlsx`, rows, 'R2');
+    }
+
+    function exportR2Lista(){
+      const baseAll = getBaseAllRows();
+      const rows = baseAll.filter(r=>r2ListKeys.has(buildKey(r)))
+        .map(r=>({Material:r.Material, Centro:r.Centro, 'Depósito':r['Depósito'], 'Texto breve material':r['Texto breve material'], UMB:r.UMB}));
+      exportXLSX(`Lista_R2_${new Date().toISOString().slice(0,10)}.xlsx`, rows, 'Lista_R2');
+    }
+
+    function exportFinal(){ exportXLSX(`Resultado_Final_${new Date().toISOString().slice(0,10)}.xlsx`, merged, 'Final'); }
+    function exportSemValor(){ exportXLSX(`Itens_Sem_Valor_${new Date().toISOString().slice(0,10)}.xlsx`, merged.filter(r=>r.NeedsValue), 'SemValor'); }
+
+    function applyFilters(){
+      const q=dom.q.value.trim().toLowerCase();
+      const st=dom.fStatus.value;
+      const dep=dom.fDeposito.value.trim();
+      return merged.filter(r=>{
+        const text = `${r.Material} ${r['Texto breve material']||''} ${r.Centro} ${r['Depósito']}`.toLowerCase();
+        return (!q || text.includes(q)) && (!st || r.Status===st) && (!dep || String(r['Depósito']).includes(dep));
+      });
+    }
+
+    function updateKPIs(){
+      dom.kpiItens.textContent = merged.length.toLocaleString('pt-BR');
+      if(dom.kpiPendTrans) dom.kpiPendTrans.textContent = (transAdj?.size||0).toLocaleString('pt-BR');
+      if(dom.kpiPendBaixas) dom.kpiPendBaixas.textContent = (baixasAdj?.size||0).toLocaleString('pt-BR');
+      dom.kpiOk.textContent = merged.filter(r=>r.Status==='OK').length.toLocaleString('pt-BR');
+      dom.kpiFalta.textContent = merged.filter(r=>r.Status==='FALTA').length.toLocaleString('pt-BR');
+      dom.kpiSobra.textContent = merged.filter(r=>r.Status==='SOBRA').length.toLocaleString('pt-BR');
+      dom.kpiSem.textContent = merged.filter(r=>r.Status==='SEM CONTAGEM').length.toLocaleString('pt-BR');
+      dom.kpiDesvio.textContent = fmtMoney(safeSum(merged.map(r=>Number.isFinite(r.Desvio)?r.Desvio:0)));
+      dom.kpiSemValor.textContent = merged.filter(r=>r.NeedsValue).length.toLocaleString('pt-BR');
+    }
+
+    function statusBadge(st){
+      if(st==='OK') return '<span class="badge ok">OK</span>';
+      if(st==='FALTA') return '<span class="badge falta">FALTA</span>';
+      if(st==='SOBRA') return '<span class="badge sobra">SOBRA</span>';
+      return '<span class="badge sem">SEM</span>';
+    }
+
+    function renderTable(rows){
+      dom.tbody.innerHTML='';
+      const frag=document.createDocumentFragment();
+      for(const r of rows){
+        const tr=document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono">${r.Material}</td>
+          <td>${r['Texto breve material']||''}</td>
+          <td class="mono">${r.Centro}</td>
+          <td class="mono">${r['Depósito']}</td>
+          <td class="mono">${r.UMB||''}</td>
+          <td class="mono num">
+            ${fmtNum(r.QtdSAP)}
+            ${
+              (r.QtdSAP_Original!==undefined && Number(r.QtdSAP_Original)!==Number(r.QtdSAP))
+                ? ` <span class="tag adjust" title="Orig: ${fmtNum(r.QtdSAP_Original)} | +Transf: ${fmtNum(r.AjusteTransfer||0)} | -Baixas: ${fmtNum(r.AjusteBaixa||0)}">Ajuste</span>`
+                : ''
+            }
+          </td>
+          <td class="mono num">${r.R1==null?'':fmtNum(r.R1)}</td>
+          <td class="mono num">${r.R2==null?'':fmtNum(r.R2)}</td>
+          <td class="mono num">${r.Final==null?'':fmtNum(r.Final)}</td>
+          <td>${statusBadge(r.Status)}</td>
+          <td class="mono num">${r.ValorUnit==null?'':fmtMoney(r.ValorUnit)}${r.ValorAjustado ? ' <span class=\"tag manual\" title=\"Valor ajustado manualmente\">Manual</span>' : ''}</td>
+          <td class="mono num">${fmtMoney(r.ValorSAP)}</td>
+          <td class="mono num">${r.Desvio==null?'':fmtMoney(r.Desvio)}</td>
+          <td>${r.ContadorR1||''}</td>
+          <td class="mono">${r.EntregaR1||''}</td>
+          <td>${r.ContadorR2||''}</td>
+          <td class="mono">${r.EntregaR2||''}</td>
+        `;
+        frag.appendChild(tr);
+      }
+      dom.tbody.appendChild(frag);
+    }
+
+    function renderValoresTab(){
+      const container=dom.tabValores;
+      const intro=container.querySelector('p');
+      container.innerHTML='';
+      container.appendChild(intro);
+      const list = merged.filter(r=>r.NeedsValue);
+      if(list.length===0){
+        const p=document.createElement('p'); p.className='mono'; p.textContent='Nenhum item pendente de valor.'; container.appendChild(p); return;
+      }
+      const wrap=document.createElement('div');
+      wrap.className='table-wrap limited';
+      wrap.innerHTML = `
+        <table style="min-width:980px; width:100%">
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th>Descrição</th>
+              <th>Centro</th>
+              <th>Depósito</th>
+              <th class="num">Qtd SAP</th>
+              <th class="num">Final</th>
+              <th class="num">Valor SAP</th>
+              <th class="num">Valor Unitário (novo)</th>
+              <th>Ação</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(r=>{
+              const key = `${r.Material}|${r.Centro}|${r['Depósito']}`;
+              const val = overrides[key] ?? '';
+              return `
+                <tr>
+                  <td class="mono">${r.Material}</td>
+                  <td>${r['Texto breve material']||''}</td>
+                  <td class="mono">${r.Centro}</td>
+                  <td class="mono">${r['Depósito']}</td>
+                  <td class="mono num">${fmtNum(r.QtdSAP)}</td>
+                  <td class="mono num">${r.Final==null?'':fmtNum(r.Final)}</td>
+                  <td class="mono num">${fmtMoney(r.ValorSAP)}</td>
+                  <td class="num"><input data-key="${key}" value="${val}" placeholder="Ex.: 12,34" style="width:160px" /></td>
+                  <td><button class="btn" data-save="${key}" style="padding:8px 10px">Salvar</button></td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+      container.appendChild(wrap);
+
+      wrap.querySelectorAll('button[data-save]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const key=btn.getAttribute('data-save');
+          const inp=wrap.querySelector(`input[data-key="${CSS.escape(key)}"]`);
+          const n=toNum(inp.value);
+          if(!Number.isFinite(n) || n<=0){alert('Informe um valor unitário válido (>0).'); return;}
+          overrides[key]=n;
+          saveOverrides();
+          showToast('✅ Valor unitário salvo', `Ajuste manual aplicado: ${key}`);
+          reconcileFinal();
+          buildR2Selection();
+        });
+      });
+    }
+
+    function renderCharts(){
+      if(typeof Chart==='undefined') return;
+
+      // Formatadores (gerencial: sem centavos no topo)
+      const fmtMoney0 = (v) => (Number.isFinite(v) ? v : 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+      const fmtQty = (v) => (Number.isFinite(v) ? v : 0).toLocaleString('pt-BR');
+
+      // Top 10 por |Desvio R$|, mantendo também qtd e sinal
+      const top10 = merged
+        .filter(r => r && r.Desvio!==null && Number.isFinite(r.Desvio))
+        .map(r => {
+          const final = (r.Final===null || r.Final===undefined) ? null : Number(r.Final);
+          const sap = Number(r.QtdSAP)||0;
+          const difQty = (final===null || !Number.isFinite(final)) ? null : (final - sap);
+          const desc = String(r['Texto breve material'] || '').trim();
+          return {
+            Material: r.Material,
+            Desc: desc,
+            DescShort: desc ? ((desc.split(/\s+/)[0] || '').slice(0,14)) : '',
+            Valor: Number(r.Desvio),
+            ValorAbs: Math.abs(Number(r.Desvio)),
+            DifQty: difQty
+          };
+        })
+        .sort((a,b)=> b.ValorAbs - a.ValorAbs)
+        .slice(0,10);
+
+      const labels = top10.map(r => r.DescShort ? [String(r.Material), r.DescShort] : [String(r.Material)]);
+      const valuesAbs = top10.map(r => r.ValorAbs);
+
+      const counts={
+        OK: merged.filter(r=>r.Status==='OK').length,
+        FALTA: merged.filter(r=>r.Status==='FALTA').length,
+        SOBRA: merged.filter(r=>r.Status==='SOBRA').length,
+        'SEM CONTAGEM': merged.filter(r=>r.Status==='SEM CONTAGEM').length
+      };
+
+      const ctx1=document.getElementById('chartTop');
+      const ctx2=document.getElementById('chartStatus');
+      if(chartTop) chartTop.destroy();
+      if(chartStatus) chartStatus.destroy();
+
+      const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#111';
+      const mutedColor = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#666';
+      const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim() || 'rgba(0,0,0,.1)';
+
+      // Plugin: escreve Qtd desviada e Valor (R$) em cima das barras
+      const barValueLabels = {
+        id: 'barValueLabels',
+        afterDatasetsDraw(chart){
+          const {ctx} = chart;
+          const meta = chart.getDatasetMeta(0);
+          if(!meta || !meta.data) return;
+
+          ctx.save();
+          ctx.fillStyle = textColor;
+          ctx.textAlign = 'center';
+
+          // Fonte consistente e legível em dashboards
+          ctx.font = '700 11px ' + getComputedStyle(document.body).fontFamily;
+
+          meta.data.forEach((bar, i) => {
+            const item = top10[i];
+            if(!item) return;
+
+            const x = bar.x;
+            const y = bar.y;
+
+            const dif = item.DifQty;
+            const qtyLine = (dif===null || !Number.isFinite(dif))
+              ? 'Qtd: —'
+              : (dif < 0 ? `FALTA ${fmtQty(Math.abs(dif))}` : (dif > 0 ? `SOBRA ${fmtQty(Math.abs(dif))}` : `OK 0`));
+
+            const moneyLine = fmtMoney0(item.Valor);
+
+            // Duas linhas acima da barra
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(qtyLine, x, y - 18);
+            ctx.fillText(moneyLine, x, y - 4);
+          });
+
+          ctx.restore();
+        }
+      };
+
+      chartTop=new Chart(ctx1,{
+        type:'bar',
+        data:{
+          labels,
+          datasets:[{
+            label:'|Desvio (R$)|',
+            data: valuesAbs,
+            backgroundColor:'rgba(59,130,246,.55)',
+            borderColor:'rgba(59,130,246,1)',
+            borderWidth:1,
+            borderRadius:8,
+            maxBarThickness:46
+          }]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          layout:{padding:{top:34,right:10,left:10,bottom:0}},
+          plugins:{
+            legend:{labels:{color:textColor}},
+            tooltip:{
+              callbacks:{
+                title:(items)=>{
+                  const idx = items?.[0]?.dataIndex ?? 0;
+                  const it = top10[idx];
+                  if(!it) return '';
+                  return it.Desc ? `${it.Material} — ${it.Desc}` : String(it.Material);
+                },
+                label:(item)=>{
+                  const idx = item.dataIndex;
+                  const it = top10[idx];
+                  if(!it) return '';
+                  const dif = it.DifQty;
+                  const q = (dif===null || !Number.isFinite(dif))
+                    ? 'Qtd: —'
+                    : (dif<0 ? `FALTA ${fmtQty(Math.abs(dif))}` : (dif>0 ? `SOBRA ${fmtQty(Math.abs(dif))}` : 'OK 0'));
+                  return [`${q}`, `Desvio: ${fmtMoney0(it.Valor)}`];
+                }
+              }
+            }
+          },
+          scales:{
+            x:{
+              ticks:{
+                color: mutedColor,
+                font:{size:9, weight:'600'},
+                autoSkip:false,
+                maxRotation:0,
+                minRotation:0
+              },
+              grid:{display:false}
+            },
+            y:{
+              ticks:{color: mutedColor},
+              grid:{color: borderColor}
+            }
+          }
+        },
+        plugins:[barValueLabels]
+      });
+
+      chartStatus=new Chart(ctx2,{
+        type:'doughnut',
+        data:{
+          labels:Object.keys(counts),
+          datasets:[{
+            data:Object.values(counts),
+            backgroundColor:[
+              'rgba(34,197,94,.75)',
+              'rgba(245,158,11,.75)',
+              'rgba(239,68,68,.75)',
+              'rgba(167,139,250,.55)'
+            ],
+            borderColor:'rgba(255,255,255,.15)',
+            borderWidth:1
+          }]
+        },
+        options:{plugins:{legend:{position:'bottom',labels:{color:textColor}}}}
+      });
+    }
+
+    function render(){
+      updateKPIs();
+      renderTable(applyFilters());
+      renderValoresTab();
+      renderCharts();
+      dom.updated.textContent = `Atualizado em ${new Date().toLocaleString('pt-BR')}`;
+      wizardSync();
+    }
+
+    function hardRefreshAfterPendentes(){
+      updatePendInfo();
+      rebuildExtraBaseRows();
+      if(baseRows.length>0){
+        if(r1Rows.length>0) buildR2Selection();
+        reconcileFinal();
+      }
+    }
+
+    dom.depPend.addEventListener('input', ()=>{
+      const newDep = String(dom.depPend.value||'').trim();
+      if(!newDep){
+        hardRefreshAfterPendentes();
+        return;
+      }
+
+      if((transAdj.size>0 || baixasAdj.size>0) && depPendValue && !depositEquals(depPendValue, newDep)){
+        clearPendentesUI();
+        showToast('⚠️ Depósito alterado', 'Ajustes pendentes foram limpos para evitar inconsistência.');
+      }
+      depPendValue = newDep;
+      updatePendInfo();
+      if(baseRows.length>0){
+        if(r1Rows.length>0) buildR2Selection();
+        reconcileFinal();
+      }
+    });
+
+    dom.btnImportTrans.addEventListener('click', ()=>{
+      if(baseRows.length===0){ showToast('⚠️ Bloqueado', 'Importe o MB52 antes.'); return; }
+      const dep = String(dom.depPend.value||'').trim();
+      if(!dep){ showToast('⚠️ Bloqueado', 'Informe o depósito antes.'); return; }
+      dom.fileTrans.click();
+    });
+
+    dom.btnImportBaixas.addEventListener('click', ()=>{
+      if(baseRows.length===0){ showToast('⚠️ Bloqueado', 'Importe o MB52 antes.'); return; }
+      const dep = String(dom.depPend.value||'').trim();
+      if(!dep){ showToast('⚠️ Bloqueado', 'Informe o depósito antes.'); return; }
+      dom.fileBaixas.click();
+    });
+
+    dom.btnClearPend.addEventListener('click', ()=>{
+      clearPendentesUI();
+      showToast('🧹 Ajustes limpos', 'Transferências e baixas pendentes foram removidas.');
+      hardRefreshAfterPendentes();
+    });
+
+    dom.fileTrans.addEventListener('change', async e=>{
+      const file = e.target.files?.[0];
+      if(!file) return;
+
+      const dep = String(dom.depPend.value||'').trim();
+      if(!dep){ showToast('⚠️ Bloqueado', 'Informe o depósito antes.'); e.target.value=''; return; }
+
+      const aoa = await readFileAOA(file);
+      const parsed = parseTransferenciasAOA(aoa, dep);
+
+      transAdj = new Map();
+      transDesc = new Map();
+      transCodeDisp = new Map();
+      for(const [k,v] of parsed.map.entries()){
+        transAdj.set(k, Number(v.qty)||0);
+        if(v && v.desc) transDesc.set(k, v.desc);
+        if(v && v.codeDisp) transCodeDisp.set(k, v.codeDisp);
+      }
+
+      transMeta = parsed.meta;
+      transMeta.file = file.name;
+
+      dom.fileNameTrans.value = file.name;
+
+      showToast('✅ Transferências importadas', `Materiais: ${transMeta.items} | Total: ${fmtNum(transMeta.total)} | Linhas válidas: ${transMeta.rowsOk}`);
+      updatePendInfo();
+      hardRefreshAfterPendentes();
+      e.target.value='';
+    });
+
+    dom.fileBaixas.addEventListener('change', async e=>{
+      const file = e.target.files?.[0];
+      if(!file) return;
+
+      const dep = String(dom.depPend.value||'').trim();
+      if(!dep){ showToast('⚠️ Bloqueado', 'Informe o depósito antes.'); e.target.value=''; return; }
+
+      const aoa = await readFileAOA(file);
+      const parsed = parseBaixasAOA(aoa, dep);
+
+      baixasAdj = new Map();
+      baixasDesc = new Map();
+      baixasCodeDisp = new Map();
+      for(const [k,v] of parsed.map.entries()){
+        baixasAdj.set(k, Number(v.qty)||0);
+        if(v && v.desc) baixasDesc.set(k, v.desc);
+        if(v && v.codeDisp) baixasCodeDisp.set(k, v.codeDisp);
+      }
+
+      baixasMeta = parsed.meta;
+      baixasMeta.file = file.name;
+
+      dom.fileNameBaixas.value = file.name;
+
+      showToast('✅ Baixas importadas', `Materiais: ${baixasMeta.items} | Total: ${fmtNum(baixasMeta.total)} | Linhas válidas: ${baixasMeta.rowsOk}`);
+      updatePendInfo();
+      hardRefreshAfterPendentes();
+      e.target.value='';
+    });
+
+    dom.btnImportBase.addEventListener('click', ()=> dom.fileBase.click());
+    dom.btnClearBase.addEventListener('click', ()=>{
+      baseRows=[]; r1Rows=[]; r2Rows=[]; merged=[]; r2ListKeys=new Set();
+      dom.fileNameBase.value='';
+      dom.baseInfo.textContent='Dica: mantenha as colunas com os nomes do SAP para evitar divergências.';
+      dom.r1Info.innerHTML='Status: <strong>Aguardando MB52</strong> — importe o MB52 para habilitar a geração da R1.';
+      dom.r2Info.innerHTML='Status: <strong>Aguardando consolidação da R1</strong> — finalize/importe a R1 para habilitar a R2.';
+      dom.btnGerarR1.disabled=true;
+      dom.lblR1.disabled=true;
+      dom.btnGerarR2.disabled=true;
+      dom.lblR2.disabled=true;
+      dom.btnExportFinal.disabled=true;
+      dom.btnExportR2Lista.disabled=true;
+      const btnPdf = document.getElementById('btnExportPDF');
+      if(btnPdf) btnPdf.disabled=true;
+      if(dom.btnExportSemValor) dom.btnExportSemValor.disabled = true;
+      dom.kpiR2.textContent='0';
+      setStepper(1);
+      clearPendentesUI();
+      updatePendInfo();
+      render();
+    });
+
+    dom.lblR1.addEventListener('click', ()=> dom.fileR1.click());
+    dom.lblR2.addEventListener('click', ()=> dom.fileR2.click());
+
+    dom.fileBase.addEventListener('change', async e=>{
+      const file=e.target.files?.[0];
+      if(!file) return;
+      const json=await readFile(file);
+      baseRows=aggregateBase(mapBaseRows(json));
+      dom.fileNameBase.value = file.name;
+      dom.baseInfo.textContent = `MB52 carregado: ${file.name} — itens: ${baseRows.length.toLocaleString('pt-BR')}`;
+
+      dom.btnGerarR1.disabled = baseRows.length===0;
+      dom.lblR1.disabled = baseRows.length===0;
+      dom.r1Info.innerHTML = 'Status: <strong>Pronto</strong> — gere e/ou importe a R1.';
+
+      r1Rows=[]; r2Rows=[]; merged=[]; r2ListKeys=new Set();
+      dom.btnGerarR2.disabled=true;
+      dom.lblR2.disabled=true;
+      dom.r2Info.innerHTML='Status: <strong>Aguardando R1</strong> — importe a R1 para selecionar a R2.';
+
+      dom.btnExportFinal.disabled=true;
+      dom.btnExportR2Lista.disabled=true;
+      if(dom.btnExportSemValor) dom.btnExportSemValor.disabled = true;
+      dom.kpiR2.textContent='0';
+
+      clearPendentesUI();
+      depPendValue = String(dom.depPend?.value || '').trim();
+      updatePendInfo();
+
+      setStepper(2);
+      render();
+      e.target.value='';
+    });
+
+    dom.btnGerarR1.addEventListener('click', exportR1);
+    dom.btnGerarR2.addEventListener('click', exportR2);
+    dom.btnExportFinal.addEventListener('click', () => {
+      const url = 'Sistema Inventário 2 - Rateio.html';
+      const win = window.open(url, '_blank');
+      if (!win) {
+        if (typeof showToast === 'function') showToast('⚠️ Pop-up bloqueado', 'Permita pop-ups para abrir a tela de rateio.');
+      }
+      exportFinal();
+    });
+    dom.btnExportR2Lista.addEventListener('click', exportR2Lista);
+    if(dom.btnExportSemValor) dom.btnExportSemValor.addEventListener('click', exportSemValor);
+
+    dom.fileR1.addEventListener('change', async e=>{
+      const file=e.target.files?.[0];
+      if(!file) return;
+      const json=await readFile(file);
+      r1Rows=mapCountRows(json);
+      dom.r1Info.innerHTML = `Status: <strong>R1 importada</strong> — ${file.name} • linhas: ${r1Rows.length.toLocaleString('pt-BR')}`;
+      buildR2Selection();
+      reconcileFinal();
+      dom.lblR2.disabled = r2ListKeys.size===0;
+      setStepper(3);
+      e.target.value='';
+    });
+
+    dom.fileR2.addEventListener('change', async e=>{
+      const file=e.target.files?.[0];
+      if(!file) return;
+      const json=await readFile(file);
+      r2Rows=mapCountRows(json);
+      dom.r2Info.innerHTML = `Status: <strong>R2 importada</strong> — ${file.name} • linhas: ${r2Rows.length.toLocaleString('pt-BR')}`;
+      reconcileFinal();
+      setStepper(4);
+      e.target.value='';
+    });
+
+    ['input','change'].forEach(evt=>{
+      dom.tol.addEventListener(evt, ()=>{ if(r1Rows.length>0){ buildR2Selection(); reconcileFinal(); } });
+      dom.r2Modo.addEventListener(evt, ()=>{ if(r1Rows.length>0){ buildR2Selection(); reconcileFinal(); } });
+      dom.valorRef.addEventListener(evt, ()=>{ if(r1Rows.length>0){ buildR2Selection(); reconcileFinal(); } });
+      dom.valorMin.addEventListener(evt, ()=>{ if(r1Rows.length>0){ buildR2Selection(); reconcileFinal(); } });
+    });
+
+    dom.btnReset.addEventListener('click', ()=>{
+      baseRows=[]; r1Rows=[]; r2Rows=[]; merged=[]; r2ListKeys=new Set();
+      dom.fileNameBase.value='';
+      dom.baseInfo.textContent='Dica: mantenha as colunas com os nomes do SAP para evitar divergências.';
+      dom.r1Info.innerHTML='Status: <strong>Aguardando MB52</strong> — importe o MB52 para habilitar a geração da R1.';
+      dom.r2Info.innerHTML='Status: <strong>Aguardando consolidação da R1</strong> — finalize/importe a R1 para habilitar a R2.';
+      dom.btnGerarR1.disabled=true;
+      dom.lblR1.disabled=true;
+      dom.btnGerarR2.disabled=true;
+      dom.lblR2.disabled=true;
+      dom.btnExportFinal.disabled=true;
+      dom.btnExportR2Lista.disabled=true;
+      if(dom.btnExportSemValor) dom.btnExportSemValor.disabled = true;
+      dom.q.value=''; dom.fStatus.value=''; dom.fDeposito.value='';
+      dom.kpiR2.textContent='0';
+      clearPendentesUI();
+      updatePendInfo();
+      setStepper(1);
+      render();
+    });
+
+    ['input','change'].forEach(evt=>{
+      dom.q.addEventListener(evt, render);
+      dom.fStatus.addEventListener(evt, render);
+      dom.fDeposito.addEventListener(evt, render);
+    });
+
+    
+    // ===== Wizard (fluxo por etapas) =====
+    const wz = {
+      btnStartInventory: document.getElementById('btnStartInventory'),
+      btnStartCounting: document.getElementById('btnStartCounting'),
+
+      backdrop: document.getElementById('wzBackdrop'),
+      dlg: document.getElementById('dlgWizard'),
+      panel: document.getElementById('wzPanel'),
+      close: document.getElementById('btnWzClose'),
+
+      subtitle: document.getElementById('wzSubtitle'),
+      p1: document.getElementById('wzP1'),
+      p2: document.getElementById('wzP2'),
+      p3: document.getElementById('wzP3'),
+      p4: document.getElementById('wzP4'),
+
+      mb52Name: document.getElementById('wzMb52Name'),
+      mb52Info: document.getElementById('wzMb52Info'),
+      btnAttachMb52: document.getElementById('btnWzAttachMb52'),
+      btnNext1: document.getElementById('btnWzNext1'),
+
+      dep: document.getElementById('wzDep'),
+      skipPend: document.getElementById('wzSkipPend'),
+      pendInfo: document.getElementById('wzPendInfo'),
+      btnTrans: document.getElementById('btnWzTrans'),
+      btnBaixas: document.getElementById('btnWzBaixas'),
+      btnClearPend: document.getElementById('btnWzClearPend'),
+      btnBack2: document.getElementById('btnWzBack2'),
+      btnNext2: document.getElementById('btnWzNext2'),
+
+      r1Nome: document.getElementById('wzR1Nome'),
+      r1Data: document.getElementById('wzR1Data'),
+      r1Info: document.getElementById('wzR1Info'),
+      btnGerarR1: document.getElementById('btnWzGerarR1'),
+      btnImportR1: document.getElementById('btnWzImportR1'),
+      btnBack3: document.getElementById('btnWzBack3'),
+      btnNext3: document.getElementById('btnWzNext3'),
+
+      r2Nome: document.getElementById('wzR2Nome'),
+      r2Data: document.getElementById('wzR2Data'),
+      tol: document.getElementById('wzTol'),
+      r2Modo: document.getElementById('wzR2Modo'),
+      valorRef: document.getElementById('wzValorRef'),
+      valorMin: document.getElementById('wzValorMin'),
+      r2Info: document.getElementById('wzR2Info'),
+      btnGerarR2: document.getElementById('btnWzGerarR2'),
+      btnImportR2: document.getElementById('btnWzImportR2'),
+      btnBack4: document.getElementById('btnWzBack4'),
+      btnFinish: document.getElementById('btnWzFinish')
+    };
+
+    let wzStep = 1;
+    let wzOpen = false;
+
+    function bodyModal(on){
+      document.body.classList.toggle('modal-open', !!on);
+    }
+
+    function openWizard(step){
+      wzStep = step;
+      wzOpen = true;
+
+      if(wz.backdrop) wz.backdrop.hidden = false;
+      if(wz.dlg) wz.dlg.hidden = false;
+      bodyModal(true);
+
+      // evitar clique "vazar"
+      if(wz.panel && !wz.panel.__stopClick){
+        wz.panel.addEventListener('click', (e)=> e.stopPropagation());
+        wz.panel.__stopClick = true;
+      }
+      if(wz.dlg && !wz.dlg.__outsideClose){
+        wz.dlg.addEventListener('click', ()=> closeWizard());
+        wz.dlg.__outsideClose = true;
+      }
+      if(wz.backdrop && !wz.backdrop.__outsideClose){
+        wz.backdrop.addEventListener('click', ()=> closeWizard());
+        wz.backdrop.__outsideClose = true;
+      }
+
+      setWizardStep(wzStep, true);
+      wizardSync();
+    }
+
+    function closeWizard(){
+      wzOpen = false;
+      if(wz.backdrop) wz.backdrop.hidden = true;
+      if(wz.dlg) wz.dlg.hidden = true;
+      bodyModal(false);
+    }
+
+    function setWizardStep(step, noScroll=false){
+      wzStep = step;
+      if(wz.subtitle) wz.subtitle.textContent = `Etapa ${step} de 4`;
+
+      // pills
+      const pills=[wz.p1,wz.p2,wz.p3,wz.p4];
+      pills.forEach((el,i)=>{ if(el) el.classList.toggle('active', (i+1)===step); });
+
+      // steps
+      if(wz.dlg){
+        wz.dlg.querySelectorAll('[data-step]').forEach(el=>{
+          el.hidden = Number(el.getAttribute('data-step')) !== step;
+        });
+      }
+      if(!noScroll && wz.panel) wz.panel.scrollTop = 0;
+
+      wizardSync();
+    }
+
+    function wizardSync(){
+      // Botões topo
+      if(wz.btnStartCounting) wz.btnStartCounting.disabled = !(baseRows.length>0);
+
+      // Step 1
+      if(wz.mb52Name) wz.mb52Name.value = dom.fileNameBase?.value || '';
+      if(wz.mb52Info) wz.mb52Info.textContent = dom.baseInfo?.textContent || dom.baseInfo?.innerText || 'Importe o MB52 para liberar as próximas etapas.';
+      if(wz.btnNext1) wz.btnNext1.disabled = !(baseRows.length>0);
+
+      // Step 2
+      if(wz.dep && wz.dep.value !== (dom.depPend?.value || '')) wz.dep.value = dom.depPend?.value || '';
+      if(wz.pendInfo) wz.pendInfo.textContent = (dom.pendInfo?.textContent || dom.pendInfo?.innerText || '').trim() || 'Informe o depósito para filtrar as planilhas, ou marque para ignorar.';
+
+      const depOk = !!String(dom.depPend?.value||'').trim();
+      const skip = !!(wz.skipPend && wz.skipPend.checked);
+      if(wz.dep) wz.dep.disabled = skip;
+      if(wz.btnTrans) wz.btnTrans.disabled = skip || !(baseRows.length>0 && depOk);
+      if(wz.btnBaixas) wz.btnBaixas.disabled = skip || !(baseRows.length>0 && depOk);
+      if(wz.btnClearPend) wz.btnClearPend.disabled = skip || !(transAdj.size>0 || baixasAdj.size>0);
+
+      // Step 3
+      if(wz.r1Nome && wz.r1Nome.value !== (dom.r1_nome?.value||'')) wz.r1Nome.value = dom.r1_nome?.value || '';
+      if(wz.r1Data && wz.r1Data.value !== (dom.r1_data?.value||'')) wz.r1Data.value = dom.r1_data?.value || '';
+      if(wz.r1Info) wz.r1Info.innerHTML = dom.r1Info?.innerHTML || 'Aguardando MB52.';
+      if(wz.btnGerarR1) wz.btnGerarR1.disabled = !(baseRows.length>0);
+      if(wz.btnImportR1) wz.btnImportR1.disabled = !(baseRows.length>0);
+      if(wz.btnNext3) wz.btnNext3.disabled = !(r1Rows.length>0); // só vai pra R2 depois de importar R1
+
+      // Step 4
+      if(wz.r2Nome && wz.r2Nome.value !== (dom.r2_nome?.value||'')) wz.r2Nome.value = dom.r2_nome?.value || '';
+      if(wz.r2Data && wz.r2Data.value !== (dom.r2_data?.value||'')) wz.r2Data.value = dom.r2_data?.value || '';
+      if(wz.tol) wz.tol.value = dom.tol?.value || '0';
+      if(wz.r2Modo) wz.r2Modo.value = dom.r2Modo?.value || 'desvios';
+      if(wz.valorRef) wz.valorRef.value = dom.valorRef?.value || 'impacto';
+      if(wz.valorMin) wz.valorMin.value = dom.valorMin?.value || '500';
+      if(wz.r2Info) wz.r2Info.innerHTML = dom.r2Info?.innerHTML || 'Aguardando seleção de R2.';
+
+      const hasR2List = r2ListKeys.size>0;
+      if(wz.btnGerarR2) wz.btnGerarR2.disabled = !hasR2List;
+      if(wz.btnImportR2) wz.btnImportR2.disabled = !hasR2List;
+
+      // reforço de estado do wizard: se o usuário abrir contagem sem MB52, leva pra MB52
+      if(wzOpen && wzStep>1 && baseRows.length===0){
+        setWizardStep(1);
+
+      // Auto avanço sem botões Próximo/Voltar:
+      // 1) MB52 importado -> vai para Pendências
+      if(wzOpen && wzStep===1 && baseRows.length>0){
+        setWizardStep(2, true);
+        return;
+      }
+
+      // 2) Pendências: se marcar "Ignorar" OU importar ao menos um arquivo (trans/baixas), avança para R1
+      const depOk2 = !!String(dom.depPend?.value||'').trim();
+      const hasPendData = (transAdj.size>0 || baixasAdj.size>0);
+      const skip2 = !!(wz.skipPend && wz.skipPend.checked);
+      if(wzOpen && wzStep===2 && (skip2 || (depOk2 && hasPendData))){
+        setTimeout(()=>{ if(wzOpen && wzStep===2) setWizardStep(3, true); }, 150);
+        // não retorna para deixar o sync terminar
+      }
+
+      // 3) R1 importada:
+      // se não houver itens para R2, encerra o wizard
+      if(wzOpen && wzStep===3 && r1Rows.length>0){
+        if(r2ListKeys.size===0){
+          setTimeout(()=>{ if(wzOpen) { closeWizard(); showToast('✅ Concluído', 'R1 importada e nenhum item foi selecionado para recontagem.'); } }, 250);
+          return;
+        } else {
+          setTimeout(()=>{ if(wzOpen && wzStep===3) setWizardStep(4, true); }, 250);
+          // segue
+        }
+      }
+
+      // 4) R2 importada -> encerra
+      if(wzOpen && wzStep===4 && r2Rows.length>0){
+        setTimeout(()=>{ if(wzOpen) { closeWizard(); showToast('✅ Concluído', 'R2 importada. Conciliação final pronta para exportação.'); } }, 250);
+        return;
+      }
+
+
+      }
+    }
+
+    // Abrir wizard
+    if(wz.btnStartInventory){
+      wz.btnStartInventory.addEventListener('click', ()=> openWizard(1));
+    }
+    if(wz.btnStartCounting){
+      wz.btnStartCounting.addEventListener('click', ()=>{
+        if(baseRows.length===0){
+          openWizard(1);
+          showToast('⚠️ Primeiro passo', 'Importe o MB52 antes de iniciar a contagem.');
+          return;
+        }
+        openWizard(3);
+      });
+    }
+
+    // Fechar
+    if(wz.close) wz.close.addEventListener('click', closeWizard);
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && wzOpen) closeWizard(); });
+
+    // Step 1 actions
+    if(wz.btnAttachMb52) wz.btnAttachMb52.addEventListener('click', ()=> dom.fileBase.click());
+    if(wz.btnNext1) wz.btnNext1.addEventListener('click', ()=> setWizardStep(2));
+
+    // Step 2 actions
+    if(wz.dep){
+      wz.dep.addEventListener('input', ()=>{
+        dom.depPend.value = wz.dep.value;
+        dom.depPend.dispatchEvent(new Event('input', {bubbles:true}));
+        wizardSync();
+      });
+    }
+    if(wz.skipPend){
+      wz.skipPend.addEventListener('change', ()=>{
+        if(wz.skipPend.checked){
+          // zera depósito e pendências para garantir consistência
+          dom.depPend.value = '';
+          dom.depPend.dispatchEvent(new Event('input', {bubbles:true}));
+          clearPendentesUI();
+          updatePendInfo();
+          reconcileFinal();
+          if(r1Rows.length>0) buildR2Selection();
+          showToast('ℹ️ Pendências ignoradas', 'Você pode aplicar depois, se necessário.');
+        }
+        wizardSync();
+      });
+    }
+    if(wz.btnTrans) wz.btnTrans.addEventListener('click', ()=> dom.fileTrans.click());
+    if(wz.btnBaixas) wz.btnBaixas.addEventListener('click', ()=> dom.fileBaixas.click());
+    if(wz.btnClearPend) wz.btnClearPend.addEventListener('click', ()=>{
+      clearPendentesUI();
+      updatePendInfo();
+      reconcileFinal();
+      if(r1Rows.length>0) buildR2Selection();
+      showToast('🧹 Pendências limpas', 'Transferências e baixas foram removidas.');
+      wizardSync();
+    });
+    if(wz.btnBack2) wz.btnBack2.addEventListener('click', ()=> setWizardStep(1));
+    if(wz.btnNext2) wz.btnNext2.addEventListener('click', ()=> setWizardStep(3));
+
+    // Step 3 actions
+    if(wz.r1Nome) wz.r1Nome.addEventListener('input', ()=> dom.r1_nome.value = wz.r1Nome.value);
+    if(wz.r1Data) wz.r1Data.addEventListener('input', ()=> dom.r1_data.value = wz.r1Data.value);
+    if(wz.btnGerarR1) wz.btnGerarR1.addEventListener('click', ()=> exportR1());
+    if(wz.btnImportR1) wz.btnImportR1.addEventListener('click', ()=> dom.fileR1.click());
+    if(wz.btnBack3) wz.btnBack3.addEventListener('click', ()=> setWizardStep(2));
+    if(wz.btnNext3) wz.btnNext3.addEventListener('click', ()=> setWizardStep(4));
+
+    // Step 4 actions
+    if(wz.r2Nome) wz.r2Nome.addEventListener('input', ()=> dom.r2_nome.value = wz.r2Nome.value);
+    if(wz.r2Data) wz.r2Data.addEventListener('input', ()=> dom.r2_data.value = wz.r2Data.value);
+    if(wz.tol) wz.tol.addEventListener('input', ()=>{ dom.tol.value = wz.tol.value; dom.tol.dispatchEvent(new Event('input', {bubbles:true})); });
+    if(wz.r2Modo) wz.r2Modo.addEventListener('change', ()=>{ dom.r2Modo.value = wz.r2Modo.value; dom.r2Modo.dispatchEvent(new Event('change', {bubbles:true})); });
+    if(wz.valorRef) wz.valorRef.addEventListener('change', ()=>{ dom.valorRef.value = wz.valorRef.value; dom.valorRef.dispatchEvent(new Event('change', {bubbles:true})); });
+    if(wz.valorMin) wz.valorMin.addEventListener('input', ()=>{ dom.valorMin.value = wz.valorMin.value; dom.valorMin.dispatchEvent(new Event('input', {bubbles:true})); });
+    if(wz.btnGerarR2) wz.btnGerarR2.addEventListener('click', ()=> exportR2());
+    if(wz.btnImportR2) wz.btnImportR2.addEventListener('click', ()=> dom.fileR2.click());
+    if(wz.btnBack4) wz.btnBack4.addEventListener('click', ()=> setWizardStep(3));
+    if(wz.btnFinish) wz.btnFinish.addEventListener('click', ()=>{
+      closeWizard();
+      showToast('✅ Fluxo concluído', 'Revise itens sem valor e exporte o Resultado Final.');
+    });
+
+
+    // ===== Cards (KPIs): exportar e detalhar =====
+    const kpiUI = {
+      dlg: document.getElementById('dlgKpi'),
+      panel: document.getElementById('kpiPanel'),
+      backdrop: document.getElementById('kpiBackdrop'),
+      title: document.getElementById('kpiTitle'),
+      subtitle: document.getElementById('kpiSubtitle'),
+      chip: document.getElementById('kpiChip'),
+      tbody: document.getElementById('kpiTbody'),
+      search: document.getElementById('kpiSearch'),
+      empty: document.getElementById('kpiEmpty'),
+      btnClose: document.getElementById('btnKpiClose'),
+      btnExport: document.getElementById('btnKpiExport')
+    };
+
+    let kpiCurrentType = '';
+    let kpiBaseRows = [];
+
+    function keyFromMerged(r){
+      return `${normKey(r.Material)}|${normKey(r.Centro)}|${normKey(r['Depósito'])}`;
+    }
+
+    function kpiLabel(type){
+      const map = {
+        itens: 'Itens (SAP)',
+        r2sel: 'Selecionados para R2',
+        pendtrans: 'Pendências de Transferência',
+        pendbaixa: 'Pendências de Baixa',
+        ok: 'OK',
+        falta: 'FALTA',
+        sobra: 'SOBRA',
+        sem: 'SEM CONTAGEM',
+        desvio: 'Desvio (R$)',
+        semvalor: 'Itens sem valor'
+      };
+      return map[type] || 'Detalhes';
+    }
+
+    function getRowsForKpi(type){
+      let rows = [];
+      if(type==='itens') rows = merged.slice();
+      else if(type==='r2sel') rows = merged.filter(r=>r2ListKeys.has(keyFromMerged(r)));
+      else if(type==='pendtrans') rows = merged.filter(r=>Number(r.AjusteTransfer||0)!==0);
+      else if(type==='pendbaixa') rows = merged.filter(r=>Number(r.AjusteBaixa||0)!==0);
+      else if(type==='ok') rows = merged.filter(r=>r.Status==='OK');
+      else if(type==='falta') rows = merged.filter(r=>r.Status==='FALTA');
+      else if(type==='sobra') rows = merged.filter(r=>r.Status==='SOBRA');
+      else if(type==='sem') rows = merged.filter(r=>r.Status==='SEM CONTAGEM');
+      else if(type==='semvalor') rows = merged.filter(r=>!!r.NeedsValue);
+      else if(type==='desvio'){
+        rows = merged.filter(r=>r.Desvio!==null && Number.isFinite(r.Desvio))
+          .slice()
+          .sort((a,b)=>Math.abs(b.Desvio)-Math.abs(a.Desvio));
+      } else rows = merged.slice();
+      return rows;
+    }
+
+    function exportXLSXGreenBlack(filename, rows, sheetName){
+      const wb = XLSX.utils.book_new();
+
+      const headers = (rows && rows.length) ? Object.keys(rows[0]) : [];
+      const aoa = [headers];
+      for(const r of (rows||[])) aoa.push(headers.map(h => r[h]));
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+      const cols = headers.map(h => {
+        let max = String(h).length;
+        for(const r of (rows||[])) {
+          const v = r[h];
+          const s = (v===null||v===undefined) ? '' : String(v);
+          if(s.length > max) max = s.length;
+        }
+        return { wch: Math.min(60, max + 2) };
+      });
+      if(cols.length) ws['!cols'] = cols;
+
+      if(headers.length){
+        ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' };
+      }
+
+      const border = {
+        top:    { style: 'thin', color: { rgb: 'FF2D3748' } },
+        bottom: { style: 'thin', color: { rgb: 'FF2D3748' } },
+        left:   { style: 'thin', color: { rgb: 'FF2D3748' } },
+        right:  { style: 'thin', color: { rgb: 'FF2D3748' } }
+      };
+
+      const headerStyle = {
+        fill: { patternType: 'solid', fgColor: { rgb: 'FF00A651' } },
+        font: { bold: true, color: { rgb: 'FF000000' } },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+        border
+      };
+
+      const cellStyle = {
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: false },
+        border
+      };
+
+      if(ws['!ref']){
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        ws['!rows'] = ws['!rows'] || [];
+        ws['!rows'][0] = { hpt: 20 };
+
+        for(let C = range.s.c; C <= range.e.c; ++C){
+          const addr = XLSX.utils.encode_cell({ r: 0, c: C });
+          if(ws[addr]) ws[addr].s = headerStyle;
+        }
+
+        for(let R = 1; R <= range.e.r; ++R){
+          for(let C = range.s.c; C <= range.e.c; ++C){
+            const addr = XLSX.utils.encode_cell({ r: R, c: C });
+            if(ws[addr]) ws[addr].s = cellStyle;
+          }
+        }
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      XLSX.writeFile(wb, filename);
+    }
+
+    function exportKpi(type, rows){
+      const stamp = new Date().toISOString().slice(0,10);
+      const safe = (type || 'kpi').toUpperCase();
+      const name = `KPI_${safe}_${stamp}.xlsx`;
+
+      // Colunas padrão para export do card
+      const out = (rows||[]).map(r=>({
+        Material: r.Material,
+        Descricao: r['Texto breve material'] || '',
+        Centro: r.Centro,
+        Deposito: r['Depósito'],
+        UMB: r.UMB || '',
+        QtdSAP: r.QtdSAP,
+        QtdSAP_Original: (r.QtdSAP_Original ?? ''),
+        AjusteTransfer: (r.AjusteTransfer ?? 0),
+        AjusteBaixa: (r.AjusteBaixa ?? 0),
+        R1: (r.R1 ?? ''),
+        R2: (r.R2 ?? ''),
+        Final: (r.Final ?? ''),
+        Status: r.Status,
+        ValorUnit: (r.ValorUnit ?? ''),
+        ValorSAP: (r.ValorSAP ?? ''),
+        Desvio: (r.Desvio ?? '')
+      }));
+
+      exportXLSXGreenBlack(name, out, safe.slice(0,28));
+    }
+
+    function openKpiModal(type){
+      // Fecha wizard se estiver aberto
+      try{ if(typeof closeWizard==='function') closeWizard(); }catch{}
+
+      kpiCurrentType = type;
+      kpiBaseRows = getRowsForKpi(type);
+
+      if(kpiUI.title) kpiUI.title.textContent = `Detalhes: ${kpiLabel(type)}`;
+      if(kpiUI.chip) kpiUI.chip.textContent = `Filtro: ${kpiLabel(type)}`;
+
+      if(kpiUI.search) kpiUI.search.value = '';
+      renderKpiModal();
+
+      if(kpiUI.backdrop) kpiUI.backdrop.hidden = false;
+      if(kpiUI.dlg) kpiUI.dlg.hidden = false;
+      document.body.classList.add('modal-open');
+      document.body.style.overflow='hidden';
+      try{ window.scrollTo({top:0, left:0, behavior:'instant'}); }catch{ window.scrollTo(0,0); }
+
+      // clique fora fecha
+      if(kpiUI.dlg && !kpiUI.dlg.__outsideClose){
+        kpiUI.dlg.addEventListener('click', ()=> closeKpiModal());
+        kpiUI.dlg.__outsideClose = true;
+      }
+      if(kpiUI.panel && !kpiUI.panel.__stopClick){
+        kpiUI.panel.addEventListener('click', (e)=> e.stopPropagation());
+        kpiUI.panel.__stopClick = true;
+      }
+      if(kpiUI.backdrop && !kpiUI.backdrop.__outsideClose){
+        kpiUI.backdrop.addEventListener('click', ()=> closeKpiModal());
+        kpiUI.backdrop.__outsideClose = true;
+      }
+    }
+
+    function closeKpiModal(){
+      if(kpiUI.backdrop) kpiUI.backdrop.hidden = true;
+      if(kpiUI.dlg) kpiUI.dlg.hidden = true;
+
+      // Se wizard não estiver aberto, remove modal-open
+      try{
+        if(typeof wzOpen!=='undefined' && wzOpen){
+          // mantém modal-open para o wizard
+        } else {
+          document.body.classList.remove('modal-open');
+          document.body.style.overflow='';
+        }
+      }catch{
+        document.body.classList.remove('modal-open');
+          document.body.style.overflow='';
+      }
+    }
+
+    function filterKpiRows(rows){
+      const q = (kpiUI.search?.value || '').trim().toLowerCase();
+      if(!q) return rows;
+      return rows.filter(r=>{
+        const t = `${r.Material} ${r['Texto breve material']||''} ${r.Centro} ${r['Depósito']}`.toLowerCase();
+        return t.includes(q);
+      });
+    }
+
+    function renderKpiModal(){
+      const rows = filterKpiRows(kpiBaseRows || []);
+      if(kpiUI.subtitle) kpiUI.subtitle.textContent = `${rows.length.toLocaleString('pt-BR')} itens`;
+      if(kpiUI.empty) kpiUI.empty.hidden = rows.length !== 0;
+
+      if(!kpiUI.tbody) return;
+      kpiUI.tbody.innerHTML = '';
+      const frag = document.createDocumentFragment();
+
+      for(const r of rows){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="mono">${r.Material}</td>
+          <td>${r['Texto breve material']||''}</td>
+          <td class="mono">${r.Centro}</td>
+          <td class="mono">${r['Depósito']}</td>
+          <td class="mono num">${fmtNum(r.QtdSAP)}</td>
+          <td class="mono num">${(r.QtdSAP_Original===undefined||r.QtdSAP_Original===null)?'':fmtNum(r.QtdSAP_Original)}</td>
+          <td class="mono num">${fmtNum(r.AjusteTransfer||0)}</td>
+          <td class="mono num">${fmtNum(r.AjusteBaixa||0)}</td>
+          <td class="mono num">${r.Final==null?'':fmtNum(r.Final)}</td>
+          <td>${statusBadge(r.Status)}</td>
+          <td class="mono num">${r.ValorUnit==null?'':fmtMoney(r.ValorUnit)}</td>
+          <td class="mono num">${r.Desvio==null?'':fmtMoney(r.Desvio)}</td>
+        `;
+        frag.appendChild(tr);
+      }
+      kpiUI.tbody.appendChild(frag);
+    }
+
+    // Events: abrir modal ao clicar no KPI, export pelo botão do KPI
+    function bindKpiCards(){
+      document.querySelectorAll('.kpi[data-kpi]').forEach(el=>{
+        const type = el.getAttribute('data-kpi');
+        el.addEventListener('click', ()=> openKpiModal(type));
+        el.addEventListener('keydown', (e)=>{
+          if(e.key==='Enter' || e.key===' '){
+            e.preventDefault();
+            openKpiModal(type);
+          }
+        });
+      });
+
+      document.querySelectorAll('.kpi-action[data-export]').forEach(btn=>{
+        btn.addEventListener('click', (e)=>{
+          e.preventDefault();
+          e.stopPropagation();
+          const type = btn.getAttribute('data-export');
+          const rows = getRowsForKpi(type);
+          exportKpi(type, rows);
+        });
+      });
+    }
+
+    // Modal events
+    if(kpiUI.btnClose) kpiUI.btnClose.addEventListener('click', closeKpiModal);
+    if(kpiUI.search){
+      ['input','change'].forEach(evt=>{
+        kpiUI.search.addEventListener(evt, renderKpiModal);
+      });
+    }
+    if(kpiUI.btnExport){
+      kpiUI.btnExport.addEventListener('click', ()=>{
+        const rows = filterKpiRows(kpiBaseRows||[]);
+        exportKpi(kpiCurrentType || 'kpi', rows);
+      });
+    }
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && !kpiUI.dlg?.hidden) closeKpiModal(); });
+
+    // Bind after load
+    bindKpiCards();
+
+
+    // ===== Relatório PDF =====
+    function calcInventorySummary(){
+      const dateStr = new Date().toLocaleDateString('pt-BR');
+      const timeStr = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+      const dep = String(dom.depPend?.value || '').trim();
+      const deposito = dep ? dep : 'Não informado';
+
+      const listCount = baseRows.filter(r => (getSapQtyAdjusted(r) || 0) !== 0).length;
+
+      let posQty=0, negQty=0, netQty=0;
+      let posVal=0, negVal=0, netVal=0;
+      let posItens=0, negItens=0;
+
+      for(const r of merged){
+        const finalQty = r.Final;
+        if(finalQty===null || finalQty===undefined) continue;
+        const unit = r.ValorUnit;
+        const sapQty = r.QtdSAP;
+
+        const dif = (Number(finalQty) - Number(sapQty));
+        if(!Number.isFinite(dif)) continue;
+
+        netQty += dif;
+
+        if(Number.isFinite(unit) && unit!==null){
+          const val = dif * Number(unit);
+          netVal += val;
+
+          if(dif > 0){
+            posItens += 1;
+            posQty += dif;
+            posVal += val;
+          } else if(dif < 0){
+            negItens += 1;
+            negQty += Math.abs(dif);
+            negVal += Math.abs(val);
+          }
+        } else {
+          // sem unit: conta quantidade mas não conta valor
+          if(dif > 0){
+            posItens += 1;
+            posQty += dif;
+          } else if(dif < 0){
+            negItens += 1;
+            negQty += Math.abs(dif);
+          }
+        }
+      }
+
+      const semValor = merged.filter(x=>x.NeedsValue).length;
+      const ok = merged.filter(x=>x.Status==='OK').length;
+      const falta = merged.filter(x=>x.Status==='FALTA').length;
+      const sobra = merged.filter(x=>x.Status==='SOBRA').length;
+      const sem = merged.filter(x=>x.Status==='SEM CONTAGEM').length;
+
+      const pendTrans = transMeta?.items || 0;
+      const pendBaixas = baixasMeta?.items || 0;
+
+      return {
+        dateStr, timeStr, deposito,
+        listCount,
+        ok, falta, sobra, sem,
+        posItens, negItens,
+        posQty, negQty, netQty,
+        posVal, negVal, netVal,
+        semValor,
+        pendTrans, pendBaixas
+      };
+    }
+
+    function buildReportHTML(){
+      const s = calcInventorySummary();
+
+      const dateLabel = `${s.dateStr} (gerado às ${s.timeStr})`;
+      const depLabel = s.deposito;
+      const r1ListCount = s.listCount;
+      const cntSobra = s.sobra;
+      const cntFalta = s.falta;
+      const sumSobraQty = s.posQty;
+      const sumSobraVal = s.posVal;
+      const sumFaltaQty = s.negQty;
+      const sumFaltaVal = s.negVal;
+      const netVal = s.netVal;
+      const netQty = (Number.isFinite(sumSobraQty)?sumSobraQty:0) - (Number.isFinite(sumFaltaQty)?sumFaltaQty:0);
+
+      const fmtQty0 = (v)=> (Number.isFinite(v)?v:0).toLocaleString('pt-BR',{minimumFractionDigits:0, maximumFractionDigits:0});
+      const fmtMoney0 = (v)=> (Number.isFinite(v)?v:0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+      const sapTotalVal = merged.reduce((acc,r)=>acc + (Number.isFinite(r.ValorSAP)?Number(r.ValorSAP):0), 0);
+      const okTotalVal = merged.reduce((acc,r)=>acc + ((r.Status==='OK' && Number.isFinite(r.ValorSAP))?Number(r.ValorSAP):0), 0);
+
+
+      const money = (v)=> (Number.isFinite(v)?v:0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+      const num = (v)=> (Number.isFinite(v)?v:0).toLocaleString('pt-BR');
+
+      // imagens dos gráficos
+      let imgTop='', imgStatus='';
+      try{
+        const c1 = document.getElementById('chartTop');
+        const c2 = document.getElementById('chartStatus');
+        if(c1) imgTop = c1.toDataURL('image/png', 1.0);
+        if(c2) imgStatus = c2.toDataURL('image/png', 1.0);
+      }catch{}
+
+      const narrative = `Neste inventário, realizado no depósito ${depLabel}, foi divulgada uma lista para contagem de ${num(r1ListCount)} materiais. Após a conferência, apuramos SOBRA em ${num(cntSobra)} material(is) e ${fmtMoney0(sumSobraVal)} em valor. Apuramos DIVERGÊNCIA (FALTA) em ${num(cntFalta)} material(is) e ${fmtMoney0(sumFaltaVal)} em valor. O desvio total líquido foi de ${fmtMoney0(netVal)} ( Sobras - Faltas ).`;
+
+
+      return `
+        <div style="width:860px;min-height:1120px;padding:22px;background:#ffffff;display:flex;flex-direction:column;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+          <div>
+            <div style="font-size:18px;font-weight:900;color:#111;">Relatório de Inventário</div>
+            <div style="margin-top:4px;color:#444;font-size:12.5px;"></div>
+          </div>
+          <div style="text-align:right;">
+            <div style="color:#444;font-size:12.5px;">Data: ${s.dateStr} ${s.timeStr}</div>
+            <div style="color:#444;font-size:12.5px;">Depósito: ${s.deposito}</div>
+          </div>
+        </div>
+
+        <div style="margin-top:10px;color:#666;font-size:11.5px;">
+          Aplicativo realizado por <strong>Lucas Marques</strong>
+        </div>
+
+        <div style="margin-top:14px;padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;background:#f8fafc;">
+          <div style="font-weight:850;color:#111;">Resumo executivo</div>
+          <div style="margin-top:8px;color:#333;font-size:13px;line-height:1.45;">${narrative}</div>
+        </div>
+
+        <div style="margin-top:14px;display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:12px;">
+          ${reportCard('Quantidade Sistêmica ( SAP )', num(merged.length), 'primary')}
+          ${reportCard('Quantidade Sistêmica ( SAP ) (R$)', money(sapTotalVal), 'primary')}
+
+          ${reportCard('Materiais Sem Divergências', num(s.ok), 'success')}
+          ${reportCard('Materiais Sem Divergências (R$)', money(okTotalVal), 'success')}
+
+          ${reportCard('Materiais Com Sobras ( Físico > SAP )', num(s.sobra), 'warning')}
+          ${reportCard('Materiais Com Sobras ( Físico > SAP ) (R$)', money(s.posVal), 'warning')}
+
+          ${reportCard('Materiais Com Divergências', num(s.falta), 'danger')}
+          ${reportCard('Materiais Com Divergências (R$)', money(s.negVal), 'danger')}
+
+          <div style="grid-column:1/-1;">
+            ${reportCard('Desvio Total NET (R$)', money(s.netVal), 'primary')}
+          </div>
+        </div>
+
+        <div style="margin-top:16px;display:grid;grid-template-columns:1fr;gap:12px;">
+          <div style="padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;background:white;">
+            <div style="font-weight:850;color:#111;">Top 10 |Desvio (R$)|</div>
+            ${imgTop ? `<img alt="Top 10 desvios" src="${imgTop}" style="margin-top:10px;width:100%;max-height:300px;object-fit:contain;" />`
+                     : `<div style="margin-top:10px;color:#666;font-size:12px;">Gráfico indisponível.</div>`}
+          </div>
+
+          <div style="padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;background:white;">
+            <div style="font-weight:850;color:#111;">Distribuição de status</div>
+            ${imgStatus ? `<img alt="Distribuição de status" src="${imgStatus}" style="margin-top:10px;width:100%;max-height:300px;object-fit:contain;" />`
+                        : `<div style="margin-top:10px;color:#666;font-size:12px;">Gráfico indisponível.</div>`}
+          </div>
+        </div>
+
+          </div>
+
+        <div style="margin-top:auto;color:#666;font-size:11.5px;border-top:1px solid #e5e7eb;padding-top:10px;display:flex;justify-content:space-between;gap:10px;">
+          <div>Relatório gerado automaticamente.</div>
+          <div>Aplicativo realizado por <strong>Lucas Marques</strong></div>
+        </div>
+        </div>
+      `;
+    }
+
+    function reportCard(label, value, tone){
+      // tone: success | warning | danger | info | neutral | primary
+      const toneMap = {
+        success: {bg:'#ecfdf5', bd:'#a7f3d0', fg:'#065f46'},
+        warning: {bg:'#fffbeb', bd:'#fcd34d', fg:'#92400e'},
+        danger:  {bg:'#fef2f2', bd:'#fecaca', fg:'#991b1b'},
+        info:    {bg:'#f5f3ff', bd:'#ddd6fe', fg:'#5b21b6'},
+        primary: {bg:'#eff6ff', bd:'#bfdbfe', fg:'#1d4ed8'},
+        neutral: {bg:'#ffffff', bd:'#e5e7eb', fg:'#111827'}
+      };
+      const t = toneMap[tone||'neutral'] || toneMap.neutral;
+      return `
+        <div style="padding:12px 14px;border:1px solid ${t.bd};border-radius:12px;background:${t.bg};">
+          <div style="color:#374151;font-size:12px;font-weight:800;">${label}</div>
+          <div style="margin-top:6px;font-size:18px;font-weight:950;color:${t.fg};">${value}</div>
+        </div>
+      `;
+    }
+
+    async function exportReportPDF(){
+      if(!merged || merged.length===0){
+        showToast('⚠️ Relatório indisponível', 'Importe MB52 e consolide o inventário antes.');
+        return;
+      }
+      if(typeof html2canvas==='undefined' || !window.jspdf){
+        showToast('⚠️ Falta biblioteca', 'html2canvas ou jsPDF não carregou.');
+        return;
+      }
+
+      const host = document.getElementById('pdfReportHost');
+      if(!host){
+        showToast('⚠️ Erro', 'Área de relatório não encontrada.');
+        return;
+      }
+
+      host.innerHTML = buildReportHTML();
+
+      // Renderiza
+      const canvas = await html2canvas(host, {scale:2, backgroundColor:'#ffffff', useCORS:true});
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'pt', 'a4');
+
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+
+      const imgW = canvas.width;
+      const imgH = canvas.height;
+
+      
+      // Ajuste para 1 página: escala para caber na A4 (sem pagina extra)
+      const scale = Math.min(pageW / imgW, pageH / imgH);
+      const drawW = imgW * scale;
+      const drawH = imgH * scale;
+
+      const imgData = canvas.toDataURL('image/png', 1.0);
+
+      const x = (pageW - drawW) / 2;
+      const y = 12;
+      pdf.addImage(imgData, 'PNG', x, y, drawW, drawH);
+const iso = new Date().toISOString().slice(0,10);
+      pdf.save(`Relatorio_Inventario_${iso}.pdf`);
+
+      showToast('✅ PDF exportado', 'Relatório gerado com cards e gráficos.');
+    }
+
+    const _btnPdf = document.getElementById('btnExportPDF');
+    if(_btnPdf) _btnPdf.addEventListener('click', exportReportPDF);
+
+loadOverrides();
+    setStepper(1);
+    render();
+    updatePendInfo();
+  </script>
+</body>
+</html>
